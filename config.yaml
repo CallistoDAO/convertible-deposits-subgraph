@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: envio-indexer
+networks:
+- id: 11155111
+  start_block: 0
+  contracts:
+  - name: ConvertibleDepositAuctioneer
+    address:
+    - 0xc14156AF3bF6c11b1c40C8f51f64bA5496870126
+    handler: src/EventHandlers.ts
+    events:
+    - event: AuctionParametersUpdated(address indexed depositAsset, uint256 newTarget, uint256 newTickSize, uint256 newMinPrice)
+    - event: AuctionResult(address indexed depositAsset, uint256 ohmConvertible, uint256 target, uint8 periodIndex)
+    - event: AuctionTrackingPeriodUpdated(address indexed depositAsset, uint8 newAuctionTrackingPeriod)
+    - event: Bid(address indexed bidder, address indexed depositAsset, uint8 indexed depositPeriod, uint256 depositAmount, uint256 convertedAmount, uint256 positionId)
+    - event: DepositPeriodDisableQueued(address indexed depositAsset, uint8 depositPeriod)
+    - event: DepositPeriodDisabled(address indexed depositAsset, uint8 depositPeriod)
+    - event: DepositPeriodEnableQueued(address indexed depositAsset, uint8 depositPeriod)
+    - event: DepositPeriodEnabled(address indexed depositAsset, uint8 depositPeriod)
+    - event: Disabled()
+    - event: Enabled()
+    - event: TickStepUpdated(address indexed depositAsset, uint24 newTickStep)
+  - name: ConvertibleDepositFacility
+    address:
+    - 0x87568265eb6Ea27f37613d242D4192B6f6771269
+    handler: src/EventHandlers.ts
+    events:
+    - event: AssetCommitCancelled(address indexed asset, address indexed operator, uint256 amount)
+    - event: AssetCommitWithdrawn(address indexed asset, address indexed operator, uint256 amount)
+    - event: AssetCommitted(address indexed asset, address indexed operator, uint256 amount)
+    - event: AssetPeriodReclaimRateSet(address indexed asset, uint8 depositPeriod, uint16 reclaimRate)
+    - event: ClaimedYield(address indexed asset, uint256 amount)
+    - event: ConvertedDeposit(address indexed asset, address indexed depositor, uint8 periodMonths, uint256 depositAmount, uint256 convertedAmount)
+    - event: CreatedDeposit(address indexed asset, address indexed depositor, uint256 indexed positionId, uint8 periodMonths, uint256 depositAmount)
+    - event: Disabled()
+    - event: Enabled()
+    - event: OperatorAuthorized(address indexed operator)
+    - event: OperatorDeauthorized(address indexed operator)
+    - event: Reclaimed(address indexed user, address indexed depositToken, uint8 depositPeriod, uint256 reclaimedAmount, uint256 forfeitedAmount)
+  - name: DepositRedemptionVault
+    address:
+    - 0x69b2Be653BAB628116b360818BE75a2d97b45C4a
+    handler: src/EventHandlers.ts
+    events:
+    - event: AnnualInterestRateSet(address indexed asset, address indexed facility, uint16 rate)
+    - event: ClaimDefaultRewardPercentageSet(uint16 percent)
+    - event: Disabled()
+    - event: Enabled()
+    - event: FacilityAuthorized(address indexed facility)
+    - event: FacilityDeauthorized(address indexed facility)
+    - event: LoanCreated(address indexed user, uint16 indexed redemptionId, uint256 amount, address facility)
+    - event: LoanDefaulted(address indexed user, uint16 indexed redemptionId, uint256 principal, uint256 interest, uint256 remainingCollateral)
+    - event: LoanExtended(address indexed user, uint16 indexed redemptionId, uint256 newDueDate)
+    - event: LoanRepaid(address indexed user, uint16 indexed redemptionId, uint256 principal, uint256 interest)
+    - event: MaxBorrowPercentageSet(address indexed asset, address indexed facility, uint16 percent)
+    - event: RedemptionCancelled(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount, uint256 remainingAmount)
+    - event: RedemptionFinished(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount)
+    - event: RedemptionStarted(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount, address facility)
+unordered_multichain_mode: true
+preload_handlers: true

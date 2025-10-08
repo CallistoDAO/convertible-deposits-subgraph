@@ -1,0 +1,626 @@
+type Asset {
+  id: ID!
+  chainId: BigInt!
+  address: String!
+  decimals: BigInt!
+  name: String!
+  symbol: String!
+
+  depositAssets: [DepositAsset!]! @derivedFrom(field: "asset")
+}
+
+type Auctioneer {
+  id: ID!
+  chainId: BigInt!
+  address: String!
+  majorVersion: String!
+  minorVersion: String!
+  enabled: Boolean!
+  auctionTrackingPeriod: BigInt!
+
+  auctionParametersUpdatedEvents: [ConvertibleDepositAuctioneer_AuctionParametersUpdated!]! @derivedFrom(field: "auctioneer")
+  auctionResultEvents: [ConvertibleDepositAuctioneer_AuctionResult!]! @derivedFrom(field: "auctioneer")
+  auctionTrackingPeriodUpdatedEvents: [ConvertibleDepositAuctioneer_AuctionTrackingPeriodUpdated!]! @derivedFrom(field: "auctioneer")
+  bidEvents: [ConvertibleDepositAuctioneer_Bid!]! @derivedFrom(field: "auctioneer")
+  depositPeriodDisableQueuedEvents: [ConvertibleDepositAuctioneer_DepositPeriodDisableQueued!]! @derivedFrom(field: "auctioneer")
+  depositPeriodDisabledEvents: [ConvertibleDepositAuctioneer_DepositPeriodDisabled!]! @derivedFrom(field: "auctioneer")
+  depositPeriodEnableQueuedEvents: [ConvertibleDepositAuctioneer_DepositPeriodEnableQueued!]! @derivedFrom(field: "auctioneer")
+  depositPeriodEnabledEvents: [ConvertibleDepositAuctioneer_DepositPeriodEnabled!]! @derivedFrom(field: "auctioneer")
+  disabledEvents: [ConvertibleDepositAuctioneer_Disabled!]! @derivedFrom(field: "auctioneer")
+  enabledEvents: [ConvertibleDepositAuctioneer_Enabled!]! @derivedFrom(field: "auctioneer")
+  tickStepUpdatedEvents: [ConvertibleDepositAuctioneer_TickStepUpdated!]! @derivedFrom(field: "auctioneer")
+}
+
+# Deposit Facility contract entity
+type DepositFacility {
+  id: ID!
+  chainId: BigInt!
+  address: String!
+  enabled: Boolean!
+
+  assetCommitCancelledEvents: [ConvertibleDepositFacility_AssetCommitCancelled!]! @derivedFrom(field: "facility")
+  assetCommitWithdrawnEvents: [ConvertibleDepositFacility_AssetCommitWithdrawn!]! @derivedFrom(field: "facility")
+  assetCommittedEvents: [ConvertibleDepositFacility_AssetCommitted!]! @derivedFrom(field: "facility")
+  assetPeriodReclaimRateSetEvents: [ConvertibleDepositFacility_AssetPeriodReclaimRateSet!]! @derivedFrom(field: "facility")
+  claimedYieldEvents: [ConvertibleDepositFacility_ClaimedYield!]! @derivedFrom(field: "facility")
+  convertedDepositEvents: [ConvertibleDepositFacility_ConvertedDeposit!]! @derivedFrom(field: "facility")
+  createdDepositEvents: [ConvertibleDepositFacility_CreatedDeposit!]! @derivedFrom(field: "facility")
+  disabledEvents: [ConvertibleDepositFacility_Disabled!]! @derivedFrom(field: "facility")
+  enabledEvents: [ConvertibleDepositFacility_Enabled!]! @derivedFrom(field: "facility")
+  operatorAuthorizedEvents: [ConvertibleDepositFacility_OperatorAuthorized!]! @derivedFrom(field: "facility")
+  operatorDeauthorizedEvents: [ConvertibleDepositFacility_OperatorDeauthorized!]! @derivedFrom(field: "facility")
+  reclaimedEvents: [ConvertibleDepositFacility_Reclaimed!]! @derivedFrom(field: "facility")
+  redemptions: [Redemption!]! @derivedFrom(field: "facility")
+}
+
+# Deposit Redemption Vault contract entity
+type DepositRedemptionVault {
+  id: ID!
+  chainId: BigInt!
+  address: String!
+  enabled: Boolean!
+
+  annualInterestRateSetEvents: [DepositRedemptionVault_AnnualInterestRateSet!]! @derivedFrom(field: "redemptionVault")
+  claimDefaultRewardPercentageSetEvents: [DepositRedemptionVault_ClaimDefaultRewardPercentageSet!]! @derivedFrom(field: "redemptionVault")
+  disabledEvents: [DepositRedemptionVault_Disabled!]! @derivedFrom(field: "redemptionVault")
+  enabledEvents: [DepositRedemptionVault_Enabled!]! @derivedFrom(field: "redemptionVault")
+  facilityAuthorizedEvents: [DepositRedemptionVault_FacilityAuthorized!]! @derivedFrom(field: "redemptionVault")
+  facilityDeauthorizedEvents: [DepositRedemptionVault_FacilityDeauthorized!]! @derivedFrom(field: "redemptionVault")
+  loanCreatedEvents: [DepositRedemptionVault_LoanCreated!]! @derivedFrom(field: "redemptionVault")
+  loanDefaultedEvents: [DepositRedemptionVault_LoanDefaulted!]! @derivedFrom(field: "redemptionVault")
+  loanExtendedEvents: [DepositRedemptionVault_LoanExtended!]! @derivedFrom(field: "redemptionVault")
+  loanRepaidEvents: [DepositRedemptionVault_LoanRepaid!]! @derivedFrom(field: "redemptionVault")
+  maxBorrowPercentageSetEvents: [DepositRedemptionVault_MaxBorrowPercentageSet!]! @derivedFrom(field: "redemptionVault")
+  redemptionCancelledEvents: [DepositRedemptionVault_RedemptionCancelled!]! @derivedFrom(field: "redemptionVault")
+  redemptionFinishedEvents: [DepositRedemptionVault_RedemptionFinished!]! @derivedFrom(field: "redemptionVault")
+  redemptionStartedEvents: [DepositRedemptionVault_RedemptionStarted!]! @derivedFrom(field: "redemptionVault")
+}
+
+# Redemption entity to group lifecycle of a redemption
+type Redemption {
+  id: ID!
+  chainId: BigInt!
+  redemptionVault: DepositRedemptionVault!
+  user: String!
+  depositAssetPeriod: DepositAssetPeriod!
+  facility: DepositFacility!
+  receiptToken: ReceiptToken!
+
+  loanCreatedEvents: [DepositRedemptionVault_LoanCreated!]! @derivedFrom(field: "redemption")
+  loanDefaultedEvents: [DepositRedemptionVault_LoanDefaulted!]! @derivedFrom(field: "redemption")
+  loanExtendedEvents: [DepositRedemptionVault_LoanExtended!]! @derivedFrom(field: "redemption")
+  loanRepaidEvents: [DepositRedemptionVault_LoanRepaid!]! @derivedFrom(field: "redemption")
+  redemptionCancelledEvents: [DepositRedemptionVault_RedemptionCancelled!]! @derivedFrom(field: "redemption")
+  redemptionFinishedEvents: [DepositRedemptionVault_RedemptionFinished!]! @derivedFrom(field: "redemption")
+  redemptionStartedEvents: [DepositRedemptionVault_RedemptionStarted!]! @derivedFrom(field: "redemption")
+}
+
+# Deposit asset entity type
+type DepositAsset {
+  id: ID!
+  chainId: BigInt!
+  asset: Asset!
+  enabled: Boolean!
+
+  periods: [DepositAssetPeriod!]! @derivedFrom(field: "depositAsset")
+  auctionParametersUpdatedEvents: [ConvertibleDepositAuctioneer_AuctionParametersUpdated!]! @derivedFrom(field: "depositAsset")
+  auctionResultEvents: [ConvertibleDepositAuctioneer_AuctionResult!]! @derivedFrom(field: "depositAsset")
+  auctionTrackingPeriodUpdatedEvents: [ConvertibleDepositAuctioneer_AuctionTrackingPeriodUpdated!]! @derivedFrom(field: "depositAsset")
+  tickStepUpdatedEvents: [ConvertibleDepositAuctioneer_TickStepUpdated!]! @derivedFrom(field: "depositAsset")
+}
+
+# Deposit asset period entity type
+type DepositAssetPeriod {
+  id: ID!
+  chainId: BigInt!
+  depositAsset: DepositAsset!
+  periodMonths: BigInt!
+  enabled: Boolean!
+
+  receiptTokens: [ReceiptToken!]! @derivedFrom(field: "depositAssetPeriod")
+  positions: [ConvertibleDepositPosition!]! @derivedFrom(field: "assetPeriod")
+  disableQueuedEvents: [ConvertibleDepositAuctioneer_DepositPeriodDisableQueued!]! @derivedFrom(field: "depositAssetPeriod")
+  disabledEvents: [ConvertibleDepositAuctioneer_DepositPeriodDisabled!]! @derivedFrom(field: "depositAssetPeriod")
+  enableQueuedEvents: [ConvertibleDepositAuctioneer_DepositPeriodEnableQueued!]! @derivedFrom(field: "depositAssetPeriod")
+  enabledEvents: [ConvertibleDepositAuctioneer_DepositPeriodEnabled!]! @derivedFrom(field: "depositAssetPeriod")
+}
+
+type ReceiptToken {
+  id: ID!
+  chainId: BigInt!
+  receiptTokenManager: String!
+  receiptTokenId: BigInt!
+  facility: DepositFacility!
+  depositAssetPeriod: DepositAssetPeriod!
+
+  positions: [ConvertibleDepositPosition!]! @derivedFrom(field: "receiptToken")
+  redemptions: [Redemption!]! @derivedFrom(field: "receiptToken")
+  convertedDepositEvents: [ConvertibleDepositFacility_ConvertedDeposit!]! @derivedFrom(field: "receiptToken")
+}
+
+# Convertible deposit position entity type
+type ConvertibleDepositPosition {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  positionId: BigInt!
+  depositor: String!
+  assetPeriod: DepositAssetPeriod!
+  initialAmount: BigInt!
+  initialAmountDecimal: BigDecimal!
+  remainingAmount: BigInt!
+  remainingAmountDecimal: BigDecimal!
+  conversionPrice: BigInt
+  conversionPriceDecimal: BigDecimal
+
+  receiptToken: ReceiptToken!
+
+  bids: [ConvertibleDepositAuctioneer_Bid!]! @derivedFrom(field: "position")
+  createdDepositEvents: [ConvertibleDepositFacility_CreatedDeposit!]! @derivedFrom(field: "position")
+}
+
+# Event types with common fields and relationships
+
+type ConvertibleDepositAuctioneer_AuctionParametersUpdated {
+  id: ID!
+  auctioneer: Auctioneer!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAsset: DepositAsset!
+  newTarget: BigInt!
+  newTargetDecimal: BigDecimal!
+  newTickSize: BigInt!
+  newTickSizeDecimal: BigDecimal!
+  newMinPrice: BigInt!
+  newMinPriceDecimal: BigDecimal!
+}
+
+type ConvertibleDepositAuctioneer_AuctionResult {
+  id: ID!
+  auctioneer: Auctioneer!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAsset: DepositAsset!
+  ohmConvertible: BigInt!
+  ohmConvertibleDecimal: BigDecimal!
+  target: BigInt!
+  targetDecimal: BigDecimal!
+  periodIndex: BigInt!
+}
+
+type ConvertibleDepositAuctioneer_AuctionTrackingPeriodUpdated {
+  id: ID!
+  auctioneer: Auctioneer!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAsset: DepositAsset!
+  newAuctionTrackingPeriod: BigInt!
+}
+
+type ConvertibleDepositAuctioneer_Bid {
+  id: ID!
+  auctioneer: Auctioneer!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  bidder: String!
+  depositAssetPeriod: DepositAssetPeriod!
+  depositAmount: BigInt!
+  depositAmountDecimal: BigDecimal!
+  convertedAmount: BigInt!
+  convertedAmountDecimal: BigDecimal!
+  position: ConvertibleDepositPosition!
+
+  tickCapacity: BigInt!
+  tickCapacityDecimal: BigDecimal!
+  tickPrice: BigInt!
+  tickPriceDecimal: BigDecimal!
+}
+
+type ConvertibleDepositAuctioneer_DepositPeriodDisableQueued {
+  id: ID!
+  auctioneer: Auctioneer!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAssetPeriod: DepositAssetPeriod!
+}
+
+type ConvertibleDepositAuctioneer_DepositPeriodDisabled {
+  id: ID!
+  auctioneer: Auctioneer!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAssetPeriod: DepositAssetPeriod!
+}
+
+type ConvertibleDepositAuctioneer_DepositPeriodEnableQueued {
+  id: ID!
+  auctioneer: Auctioneer!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAssetPeriod: DepositAssetPeriod!
+}
+
+type ConvertibleDepositAuctioneer_DepositPeriodEnabled {
+  id: ID!
+  auctioneer: Auctioneer!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAssetPeriod: DepositAssetPeriod!
+}
+
+type ConvertibleDepositAuctioneer_Disabled {
+  id: ID!
+  auctioneer: Auctioneer!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+}
+
+type ConvertibleDepositAuctioneer_Enabled {
+  id: ID!
+  auctioneer: Auctioneer!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+}
+
+type ConvertibleDepositAuctioneer_TickStepUpdated {
+  id: ID!
+  auctioneer: Auctioneer!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAsset: DepositAsset!
+  newTickStep: BigInt!
+  newTickStepDecimal: BigDecimal!
+}
+
+type ConvertibleDepositFacility_AssetCommitCancelled {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAsset: DepositAsset!
+  operator: String!
+  amount: BigInt!
+  amountDecimal: BigDecimal!
+
+  committedAmount: BigInt!
+  committedAmountDecimal: BigDecimal!
+}
+
+type ConvertibleDepositFacility_AssetCommitWithdrawn {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAsset: DepositAsset!
+  operator: String!
+  amount: BigInt!
+  amountDecimal: BigDecimal!
+
+  committedAmount: BigInt!
+  committedAmountDecimal: BigDecimal!
+}
+
+type ConvertibleDepositFacility_AssetCommitted {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAsset: DepositAsset!
+  operator: String!
+  amount: BigInt!
+  amountDecimal: BigDecimal!
+
+  committedAmount: BigInt!
+  committedAmountDecimal: BigDecimal!
+}
+
+type ConvertibleDepositFacility_AssetPeriodReclaimRateSet {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAssetPeriod: DepositAssetPeriod!
+  reclaimRate: BigInt!
+  reclaimRateDecimal: BigDecimal!
+}
+
+type ConvertibleDepositFacility_ClaimedYield {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAsset: DepositAsset!
+  amount: BigInt!
+  amountDecimal: BigDecimal!
+}
+
+type ConvertibleDepositFacility_ConvertedDeposit {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAssetPeriod: DepositAssetPeriod!
+  receiptToken: ReceiptToken!
+  depositor: String!
+  depositAmount: BigInt!
+  depositAmountDecimal: BigDecimal!
+  convertedAmount: BigInt!
+  convertedAmountDecimal: BigDecimal!
+}
+
+type ConvertibleDepositFacility_CreatedDeposit {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAssetPeriod: DepositAssetPeriod!
+  depositor: String!
+  position: ConvertibleDepositPosition!
+  depositAmount: BigInt!
+  depositAmountDecimal: BigDecimal!
+}
+
+type ConvertibleDepositFacility_Disabled {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+}
+
+type ConvertibleDepositFacility_Enabled {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+}
+
+type ConvertibleDepositFacility_OperatorAuthorized {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  operator: String!
+}
+
+type ConvertibleDepositFacility_OperatorDeauthorized {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  operator: String!
+}
+
+type ConvertibleDepositFacility_Reclaimed {
+  id: ID!
+  facility: DepositFacility!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  user: String!
+  depositAssetPeriod: DepositAssetPeriod!
+  reclaimedAmount: BigInt!
+  reclaimedAmountDecimal: BigDecimal!
+  forfeitedAmount: BigInt!
+  forfeitedAmountDecimal: BigDecimal!
+}
+
+type DepositRedemptionVault_AnnualInterestRateSet {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAsset: DepositAsset!
+  facility: DepositFacility!
+  rate: BigInt!
+  rateDecimal: BigDecimal!
+}
+
+type DepositRedemptionVault_ClaimDefaultRewardPercentageSet {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  percent: BigInt!
+  percentDecimal: BigDecimal!
+}
+
+type DepositRedemptionVault_Disabled {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+}
+
+type DepositRedemptionVault_Enabled {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+}
+
+type DepositRedemptionVault_FacilityAuthorized {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  facility: DepositFacility!
+}
+
+type DepositRedemptionVault_FacilityDeauthorized {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  facility: DepositFacility!
+}
+
+type DepositRedemptionVault_LoanCreated {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  user: String!
+  redemption: Redemption!
+  amount: BigInt!
+  amountDecimal: BigDecimal!
+}
+
+type DepositRedemptionVault_LoanDefaulted {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  user: String!
+  redemption: Redemption!
+  principal: BigInt!
+  principalDecimal: BigDecimal!
+  interest: BigInt!
+  interestDecimal: BigDecimal!
+  remainingCollateral: BigInt!
+  remainingCollateralDecimal: BigDecimal!
+}
+
+type DepositRedemptionVault_LoanExtended {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  user: String!
+  redemption: Redemption!
+  newDueDate: BigInt!
+}
+
+type DepositRedemptionVault_LoanRepaid {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  user: String!
+  redemption: Redemption!
+  principal: BigInt!
+  principalDecimal: BigDecimal!
+  interest: BigInt!
+  interestDecimal: BigDecimal!
+}
+
+type DepositRedemptionVault_MaxBorrowPercentageSet {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  depositAsset: DepositAsset!
+  facility: DepositFacility!
+  percent: BigInt!
+  percentDecimal: BigDecimal!
+}
+
+type DepositRedemptionVault_RedemptionCancelled {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  user: String!
+  redemption: Redemption!
+  amount: BigInt!
+  amountDecimal: BigDecimal!
+  remainingAmount: BigInt!
+  remainingAmountDecimal: BigDecimal!
+}
+
+type DepositRedemptionVault_RedemptionFinished {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  user: String!
+  redemption: Redemption!
+  amount: BigInt!
+  amountDecimal: BigDecimal!
+}
+
+type DepositRedemptionVault_RedemptionStarted {
+  id: ID!
+  redemptionVault: DepositRedemptionVault!
+  chainId: BigInt!
+  txHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+  user: String!
+  redemption: Redemption!
+  amount: BigInt!
+  amountDecimal: BigDecimal!
+}
