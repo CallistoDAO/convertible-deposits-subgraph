@@ -58,3 +58,6 @@ networks:
     - event: RedemptionStarted(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount, address facility)
 unordered_multichain_mode: true
 preload_handlers: true
+field_selection:
+  transaction_fields:
+    - hash

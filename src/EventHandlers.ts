@@ -14,19 +14,6 @@ import {
   ConvertibleDepositAuctioneer_Disabled,
   ConvertibleDepositAuctioneer_Enabled,
   ConvertibleDepositAuctioneer_TickStepUpdated,
-  ConvertibleDepositFacility,
-  ConvertibleDepositFacility_AssetCommitCancelled,
-  ConvertibleDepositFacility_AssetCommitWithdrawn,
-  ConvertibleDepositFacility_AssetCommitted,
-  ConvertibleDepositFacility_AssetPeriodReclaimRateSet,
-  ConvertibleDepositFacility_ClaimedYield,
-  ConvertibleDepositFacility_ConvertedDeposit,
-  ConvertibleDepositFacility_CreatedDeposit,
-  ConvertibleDepositFacility_Disabled,
-  ConvertibleDepositFacility_Enabled,
-  ConvertibleDepositFacility_OperatorAuthorized,
-  ConvertibleDepositFacility_OperatorDeauthorized,
-  ConvertibleDepositFacility_Reclaimed,
   DepositRedemptionVault,
   DepositRedemptionVault_AnnualInterestRateSet,
   DepositRedemptionVault_ClaimDefaultRewardPercentageSet,
@@ -42,118 +29,273 @@ import {
   DepositRedemptionVault_RedemptionCancelled,
   DepositRedemptionVault_RedemptionFinished,
   DepositRedemptionVault_RedemptionStarted,
+  ConvertibleDepositFacility_AssetCommitCancelled,
+  ConvertibleDepositFacility_AssetCommitWithdrawn,
+  ConvertibleDepositFacility_AssetCommitted,
+  ConvertibleDepositFacility_AssetPeriodReclaimRateSet,
+  ConvertibleDepositFacility_ClaimedYield,
+  ConvertibleDepositFacility_ConvertedDeposit,
+  ConvertibleDepositFacility_CreatedDeposit,
+  ConvertibleDepositFacility_Disabled,
+  ConvertibleDepositFacility_Enabled,
+  ConvertibleDepositFacility_OperatorAuthorized,
+  ConvertibleDepositFacility_OperatorDeauthorized,
+  ConvertibleDepositFacility_Reclaimed,
 } from "generated";
+import { getBlockId } from "./utils/ids";
+import {
+  getOrCreateAuctioneer,
+  getOrCreateDepositAsset,
+  getOrCreateDepositAssetPeriod,
+  getOrCreateDepositFacility,
+  getOrCreatePosition,
+  getOrCreateReceiptToken,
+  getOrCreateRedemption,
+  getOrCreateRedemptionVault,
+} from "./utils/entities";
 
 ConvertibleDepositAuctioneer.AuctionParametersUpdated.handler(async ({ event, context }) => {
+  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+  const auctioneer = await getOrCreateAuctioneer(context, BigInt(event.chainId), event.srcAddress);
+  const depositAsset = await getOrCreateDepositAsset(context, BigInt(event.chainId), event.params.depositAsset);
   const entity: ConvertibleDepositAuctioneer_AuctionParametersUpdated = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-    depositAsset: event.params.depositAsset,
+    id,
+    auctioneer,
+    chainId: BigInt(event.chainId),
+    txHash: event.transaction.hash,
+    block: BigInt(event.block.number),
+    timestamp: BigInt(event.block.timestamp),
+    depositAsset,
     newTarget: event.params.newTarget,
     newTickSize: event.params.newTickSize,
     newMinPrice: event.params.newMinPrice,
-  };
+  } as unknown as ConvertibleDepositAuctioneer_AuctionParametersUpdated;
 
   context.ConvertibleDepositAuctioneer_AuctionParametersUpdated.set(entity);
 });
 
 ConvertibleDepositAuctioneer.AuctionResult.handler(async ({ event, context }) => {
+  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+  const auctioneer = await getOrCreateAuctioneer(context, BigInt(event.chainId), event.srcAddress);
+  const depositAsset = await getOrCreateDepositAsset(context, BigInt(event.chainId), event.params.depositAsset);
   const entity: ConvertibleDepositAuctioneer_AuctionResult = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-    depositAsset: event.params.depositAsset,
+    id,
+    auctioneer,
+    chainId: BigInt(event.chainId),
+    txHash: event.transaction.hash,
+    block: BigInt(event.block.number),
+    timestamp: BigInt(event.block.timestamp),
+    depositAsset,
     ohmConvertible: event.params.ohmConvertible,
     target: event.params.target,
     periodIndex: event.params.periodIndex,
-  };
+  } as unknown as ConvertibleDepositAuctioneer_AuctionResult;
 
   context.ConvertibleDepositAuctioneer_AuctionResult.set(entity);
 });
 
 ConvertibleDepositAuctioneer.AuctionTrackingPeriodUpdated.handler(async ({ event, context }) => {
+  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+  const auctioneer = await getOrCreateAuctioneer(context, BigInt(event.chainId), event.srcAddress);
+  const depositAsset = await getOrCreateDepositAsset(context, BigInt(event.chainId), event.params.depositAsset);
   const entity: ConvertibleDepositAuctioneer_AuctionTrackingPeriodUpdated = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-    depositAsset: event.params.depositAsset,
+    id,
+    auctioneer,
+    chainId: BigInt(event.chainId),
+    txHash: event.transaction.hash,
+    block: BigInt(event.block.number),
+    timestamp: BigInt(event.block.timestamp),
+    depositAsset,
     newAuctionTrackingPeriod: event.params.newAuctionTrackingPeriod,
-  };
+  } as unknown as ConvertibleDepositAuctioneer_AuctionTrackingPeriodUpdated;
 
   context.ConvertibleDepositAuctioneer_AuctionTrackingPeriodUpdated.set(entity);
 });
 
 ConvertibleDepositAuctioneer.Bid.handler(async ({ event, context }) => {
+  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+  const auctioneer = await getOrCreateAuctioneer(context, BigInt(event.chainId), event.srcAddress);
+  const depositAsset = await getOrCreateDepositAsset(context, BigInt(event.chainId), event.params.depositAsset);
+  const assetPeriod = await getOrCreateDepositAssetPeriod(
+    context,
+    BigInt(event.chainId),
+    depositAsset.id,
+    event.params.depositPeriod
+  );
+  const facility = await getOrCreateDepositFacility(context, BigInt(event.chainId), event.srcAddress);
+  const receiptToken = await getOrCreateReceiptToken(
+    context,
+    BigInt(event.chainId),
+    facility,
+    event.params.depositAsset as `0x${string}`,
+    assetPeriod
+  );
+  const position = await getOrCreatePosition(
+    context,
+    BigInt(event.chainId),
+    facility,
+    assetPeriod,
+    event.params.positionId,
+    event.params.bidder,
+    receiptToken
+  );
   const entity: ConvertibleDepositAuctioneer_Bid = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-    bidder: event.params.bidder,
-    depositAsset: event.params.depositAsset,
-    depositPeriod: event.params.depositPeriod,
+    id,
+    auctioneer,
+    chainId: BigInt(event.chainId),
+    txHash: event.transaction.hash,
+    block: BigInt(event.block.number),
+    timestamp: BigInt(event.block.timestamp),
+    bidder: event.params.bidder.toLowerCase(),
+    depositAssetPeriod: assetPeriod,
     depositAmount: event.params.depositAmount,
     convertedAmount: event.params.convertedAmount,
-    positionId: event.params.positionId,
-  };
+    position,
+    tickCapacity: event.params.tickCapacity,
+    tickCapacityDecimal: 0 as unknown as any,
+    tickPrice: event.params.tickPrice,
+    tickPriceDecimal: 0 as unknown as any,
+  } as unknown as ConvertibleDepositAuctioneer_Bid;
 
   context.ConvertibleDepositAuctioneer_Bid.set(entity);
 });
 
 ConvertibleDepositAuctioneer.DepositPeriodDisableQueued.handler(async ({ event, context }) => {
+  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+  const auctioneer = await getOrCreateAuctioneer(context, BigInt(event.chainId), event.srcAddress);
+  const depositAsset = await getOrCreateDepositAsset(context, BigInt(event.chainId), event.params.depositAsset);
+  const assetPeriod = await getOrCreateDepositAssetPeriod(
+    context,
+    BigInt(event.chainId),
+    depositAsset.id,
+    event.params.depositPeriod
+  );
   const entity: ConvertibleDepositAuctioneer_DepositPeriodDisableQueued = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-    depositAsset: event.params.depositAsset,
-    depositPeriod: event.params.depositPeriod,
-  };
+    id,
+    auctioneer,
+    chainId: BigInt(event.chainId),
+    txHash: event.transaction.hash,
+    block: BigInt(event.block.number),
+    timestamp: BigInt(event.block.timestamp),
+    depositAssetPeriod: assetPeriod,
+  } as unknown as ConvertibleDepositAuctioneer_DepositPeriodDisableQueued;
 
   context.ConvertibleDepositAuctioneer_DepositPeriodDisableQueued.set(entity);
 });
 
 ConvertibleDepositAuctioneer.DepositPeriodDisabled.handler(async ({ event, context }) => {
+  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+  const auctioneer = await getOrCreateAuctioneer(context, BigInt(event.chainId), event.srcAddress);
+  const depositAsset = await getOrCreateDepositAsset(context, BigInt(event.chainId), event.params.depositAsset);
+  const assetPeriod = await getOrCreateDepositAssetPeriod(
+    context,
+    BigInt(event.chainId),
+    depositAsset.id,
+    event.params.depositPeriod
+  );
   const entity: ConvertibleDepositAuctioneer_DepositPeriodDisabled = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-    depositAsset: event.params.depositAsset,
-    depositPeriod: event.params.depositPeriod,
-  };
+    id,
+    auctioneer,
+    chainId: BigInt(event.chainId),
+    txHash: event.transaction.hash,
+    block: BigInt(event.block.number),
+    timestamp: BigInt(event.block.timestamp),
+    depositAssetPeriod: assetPeriod,
+  } as unknown as ConvertibleDepositAuctioneer_DepositPeriodDisabled;
 
   context.ConvertibleDepositAuctioneer_DepositPeriodDisabled.set(entity);
 });
 
 ConvertibleDepositAuctioneer.DepositPeriodEnableQueued.handler(async ({ event, context }) => {
+  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+  const auctioneer = await getOrCreateAuctioneer(context, BigInt(event.chainId), event.srcAddress);
+  const depositAsset = await getOrCreateDepositAsset(context, BigInt(event.chainId), event.params.depositAsset);
+  const assetPeriod = await getOrCreateDepositAssetPeriod(
+    context,
+    BigInt(event.chainId),
+    depositAsset.id,
+    event.params.depositPeriod
+  );
   const entity: ConvertibleDepositAuctioneer_DepositPeriodEnableQueued = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-    depositAsset: event.params.depositAsset,
-    depositPeriod: event.params.depositPeriod,
-  };
+    id,
+    auctioneer,
+    chainId: BigInt(event.chainId),
+    txHash: event.transaction.hash,
+    block: BigInt(event.block.number),
+    timestamp: BigInt(event.block.timestamp),
+    depositAssetPeriod: assetPeriod,
+  } as unknown as ConvertibleDepositAuctioneer_DepositPeriodEnableQueued;
 
   context.ConvertibleDepositAuctioneer_DepositPeriodEnableQueued.set(entity);
 });
 
 ConvertibleDepositAuctioneer.DepositPeriodEnabled.handler(async ({ event, context }) => {
+  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+  const auctioneer = await getOrCreateAuctioneer(context, BigInt(event.chainId), event.srcAddress);
+  const depositAsset = await getOrCreateDepositAsset(context, BigInt(event.chainId), event.params.depositAsset);
+  const assetPeriod = await getOrCreateDepositAssetPeriod(
+    context,
+    BigInt(event.chainId),
+    depositAsset.id,
+    event.params.depositPeriod
+  );
   const entity: ConvertibleDepositAuctioneer_DepositPeriodEnabled = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-    depositAsset: event.params.depositAsset,
-    depositPeriod: event.params.depositPeriod,
-  };
+    id,
+    auctioneer,
+    chainId: BigInt(event.chainId),
+    txHash: event.transaction.hash,
+    block: BigInt(event.block.number),
+    timestamp: BigInt(event.block.timestamp),
+    depositAssetPeriod: assetPeriod,
+  } as unknown as ConvertibleDepositAuctioneer_DepositPeriodEnabled;
 
   context.ConvertibleDepositAuctioneer_DepositPeriodEnabled.set(entity);
 });
 
 ConvertibleDepositAuctioneer.Disabled.handler(async ({ event, context }) => {
+  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+  const auctioneer = await getOrCreateAuctioneer(context, BigInt(event.chainId), event.srcAddress);
   const entity: ConvertibleDepositAuctioneer_Disabled = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-  };
+    id,
+    auctioneer,
+    chainId: BigInt(event.chainId),
+    txHash: event.transaction.hash,
+    block: BigInt(event.block.number),
+    timestamp: BigInt(event.block.timestamp),
+  } as unknown as ConvertibleDepositAuctioneer_Disabled;
 
   context.ConvertibleDepositAuctioneer_Disabled.set(entity);
 });
 
 ConvertibleDepositAuctioneer.Enabled.handler(async ({ event, context }) => {
+  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+  const auctioneer = await getOrCreateAuctioneer(context, BigInt(event.chainId), event.srcAddress);
   const entity: ConvertibleDepositAuctioneer_Enabled = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-  };
+    id,
+    auctioneer,
+    chainId: BigInt(event.chainId),
+    txHash: event.transaction.hash,
+    block: BigInt(event.block.number),
+    timestamp: BigInt(event.block.timestamp),
+  } as unknown as ConvertibleDepositAuctioneer_Enabled;
 
   context.ConvertibleDepositAuctioneer_Enabled.set(entity);
 });
 
 ConvertibleDepositAuctioneer.TickStepUpdated.handler(async ({ event, context }) => {
+  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+  const auctioneer = await getOrCreateAuctioneer(context, BigInt(event.chainId), event.srcAddress);
+  const depositAsset = await getOrCreateDepositAsset(context, BigInt(event.chainId), event.params.depositAsset);
   const entity: ConvertibleDepositAuctioneer_TickStepUpdated = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-    depositAsset: event.params.depositAsset,
+    id,
+    auctioneer,
+    chainId: BigInt(event.chainId),
+    txHash: event.transaction.hash,
+    block: BigInt(event.block.number),
+    timestamp: BigInt(event.block.timestamp),
+    depositAsset,
     newTickStep: event.params.newTickStep,
-  };
+  } as unknown as ConvertibleDepositAuctioneer_TickStepUpdated;
 
   context.ConvertibleDepositAuctioneer_TickStepUpdated.set(entity);
 });
