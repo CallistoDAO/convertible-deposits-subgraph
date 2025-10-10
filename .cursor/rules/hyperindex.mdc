@@ -114,9 +114,14 @@ You can also use `!context.isPreload` check, to prevent some logic to run during
 
 **Entity Relationships**:
 
-- In Envio, use `entity_id` fields (e.g., `token_id: string`) instead of direct object references
-- The generated types expect `token_id` not `token` for relationships
-- Example: `{ token_id: tokenId }` not `{ token: tokenObject }`
+- In Envio, the syntax for linking one record to another is done this way:
+
+```typescript
+context.A.set({
+  id: aId,
+  b_id: bId, // ID of the linked B entity
+});
+```
 
 **Timestamp Handling**:
 
@@ -146,9 +151,8 @@ You can also use `!context.isPreload` check, to prevent some logic to run during
 
 - Do not add the @entity decorator to GraphQL schema types
 - Avoid schema fields like dailyVolume or other time-series fields that aggregate over time — these are typically inaccurate
-- **NEVER use arrays of entities** (e.g., `[Enter!]!` or `[User!]!`) - Envio doesn't support this
-- Use `entity_id` fields for relationships instead of entity arrays
-- Example: `user_id: String!` instead of `user: User!` or `users: [User!]!`
+- **NEVER use arrays of entities** (e.g., `[Enter!]!` or `[User!]!`) unless it is using `@derivedFrom`
+- Other entities can be referenced, e.g. `user: User!`
 
 ## Config Rules
 
