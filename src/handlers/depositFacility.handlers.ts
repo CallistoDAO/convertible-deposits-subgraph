@@ -16,6 +16,7 @@ import {
   type ConvertibleDepositFacility_OperatorDeauthorized,
   type ConvertibleDepositFacility_Reclaimed,
 } from "generated";
+import { fetchUserPositionIds } from "../contracts/position";
 import { getAssetDecimals } from "../entities/asset";
 import {
   getOrCreateDepositFacility,
@@ -23,10 +24,10 @@ import {
   getOrCreateDepositFacilityAssetPeriod,
 } from "../entities/depositFacility";
 import { getOrCreateDepositor } from "../entities/depositor";
-import { getOrCreatePosition } from "../entities/position";
+import { getOrCreatePosition, updatePositionFromContract } from "../entities/position";
 import { getOrCreateReceiptToken } from "../entities/receiptToken";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
-import { getBlockId } from "../utils/ids";
+import { getBlockId, getPositionId } from "../utils/ids";
 
 ConvertibleDepositFacility.AssetCommitCancelled.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
@@ -246,7 +247,22 @@ ConvertibleDepositFacility.ConvertedDeposit.handler(async ({ event, context }) =
   };
   context.ConvertibleDepositFacility_ConvertedDeposit.set(entity);
 
-  // TODO Consider updating positions of depositor
+  // Update positions of depositor for this asset period
+  const userPositionIds = await context.effect(fetchUserPositionIds, {
+    chainId: event.chainId,
+    userAddress: event.params.depositor,
+  });
+
+  // Update positions of depositor for this asset period
+  for (const positionId of userPositionIds) {
+    const positionRecordId = getPositionId(event.chainId, positionId);
+    const position = await context.ConvertibleDepositPosition.get(positionRecordId);
+
+    if (!position) continue;
+    if (position.assetPeriod_id !== facilityAssetPeriod.depositAssetPeriod_id) continue;
+
+    await updatePositionFromContract(context, positionRecordId, assetDecimals);
+  }
 });
 
 ConvertibleDepositFacility.CreatedDeposit.handler(async ({ event, context }) => {

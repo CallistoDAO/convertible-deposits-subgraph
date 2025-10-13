@@ -25,6 +25,7 @@ import {
   getDepositAssetPeriodDecimals,
 } from "../entities/asset";
 import { getOrCreateDepositFacility } from "../entities/depositFacility";
+import { getPosition } from "../entities/position";
 import { getOrCreateRedemption, getRedemption } from "../entities/redemption";
 import { getOrCreateRedemptionLoan, getRedemptionLoan } from "../entities/redemptionLoan";
 import {
@@ -444,6 +445,19 @@ DepositRedemptionVault.RedemptionCancelled.handler(async ({ event, context }) =>
     amountDecimal: toDecimal(event.params.amount, assetDecimals),
   };
   context.Redemption.set(updatedRedemption);
+
+  // Update position (if applicable)
+  if (redemption.position_id) {
+    const position = await getPosition(context, redemption.position_id);
+    const updatedAmount = position.remainingAmount + event.params.amount;
+
+    const updatedPosition = {
+      ...position,
+      remainingAmount: updatedAmount,
+      remainingAmountDecimal: toDecimal(updatedAmount, assetDecimals),
+    };
+    context.ConvertibleDepositPosition.set(updatedPosition);
+  }
 });
 
 DepositRedemptionVault.RedemptionFinished.handler(async ({ event, context }) => {
@@ -473,6 +487,16 @@ DepositRedemptionVault.RedemptionFinished.handler(async ({ event, context }) => 
     amountDecimal: toDecimal(event.params.amount, assetDecimals),
   };
   context.DepositRedemptionVault_RedemptionFinished.set(entity);
+
+  // Update redemption amount
+  const updatedRedemption = {
+    ...redemption,
+    amount: event.params.amount,
+    amountDecimal: toDecimal(event.params.amount, assetDecimals),
+  };
+  context.Redemption.set(updatedRedemption);
+
+  // Position has already been updated in the RedemptionStarted and RedemptionCancelled events
 });
 
 DepositRedemptionVault.RedemptionStarted.handler(async ({ event, context }) => {
@@ -514,4 +538,17 @@ DepositRedemptionVault.RedemptionStarted.handler(async ({ event, context }) => {
     amountDecimal: toDecimal(event.params.amount, assetDecimals),
   };
   context.Redemption.set(updatedRedemption);
+
+  // Update position (if applicable)
+  if (redemption.position_id) {
+    const position = await getPosition(context, redemption.position_id);
+    const updatedAmount = position.remainingAmount - event.params.amount;
+
+    const updatedPosition = {
+      ...position,
+      remainingAmount: updatedAmount,
+      remainingAmountDecimal: toDecimal(updatedAmount, assetDecimals),
+    };
+    context.ConvertibleDepositPosition.set(updatedPosition);
+  }
 });

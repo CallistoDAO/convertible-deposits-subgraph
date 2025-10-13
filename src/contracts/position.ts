@@ -37,3 +37,26 @@ export const fetchPosition = experimental_createEffect(
     return position;
   },
 );
+
+export const fetchUserPositionIds = experimental_createEffect(
+  {
+    name: "fetchUserPositionIds",
+    input: {
+      chainId: S.number,
+      userAddress: S.string,
+    },
+    output: S.array(S.bigint),
+    cache: true,
+  },
+  async ({ input }) => {
+    const client = getClient(input.chainId);
+    const positionIds = await client.readContract({
+      address: DEPOS,
+      abi: DepositPositionManagerAbi,
+      functionName: "getUserPositionIds",
+      args: [input.userAddress as `0x${string}`],
+    });
+
+    return positionIds as bigint[];
+  },
+);

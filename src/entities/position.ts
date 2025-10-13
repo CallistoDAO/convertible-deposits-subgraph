@@ -69,3 +69,38 @@ export async function getOrCreatePosition(
 
   return created;
 }
+
+export async function getPosition(
+  context: HandlerContext,
+  recordId: string,
+): Promise<ConvertibleDepositPosition> {
+  const existing = await context.ConvertibleDepositPosition.get(recordId);
+  if (!existing) {
+    throw new Error(`Position ${recordId} not found`);
+  }
+
+  return existing as ConvertibleDepositPosition;
+}
+
+export async function updatePositionFromContract(
+  context: HandlerContext,
+  positionId: string,
+  assetDecimals: number,
+): Promise<void> {
+  const position = await getPosition(context, positionId);
+
+  // Fetch updated position data from contract
+  const contractPosition = await context.effect(fetchPosition, {
+    chainId: position.chainId,
+    positionId: position.positionId,
+  });
+
+  // Update the position with the latest remainingAmount from the contract
+  const updatedPosition: ConvertibleDepositPosition = {
+    ...position,
+    remainingAmount: contractPosition.remainingDeposit,
+    remainingAmountDecimal: toDecimal(contractPosition.remainingDeposit, assetDecimals),
+  };
+
+  context.ConvertibleDepositPosition.set(updatedPosition);
+}
