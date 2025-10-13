@@ -1,8 +1,12 @@
 export function buildEntityId(parts: Array<string | number | bigint>): string {
-  return parts.map((p) => p.toString()).join("_");
+  return parts.map((p) => p.toString().toLowerCase()).join("_");
 }
 
-export function getBlockId(chainId: number | bigint, blockNumber: number | bigint, logIndex?: number | bigint): string {
+export function getBlockId(
+  chainId: number | bigint,
+  blockNumber: number | bigint,
+  logIndex?: number | bigint,
+): string {
   const segments: Array<string | number | bigint> = [chainId, blockNumber];
   if (logIndex !== undefined) segments.push(logIndex);
   return buildEntityId(segments);
@@ -19,7 +23,7 @@ export function getPositionId(chainId: number | bigint, positionId: number | big
 export function getReceiptTokenId(
   chainId: number | bigint,
   receiptTokenManager: string,
-  receiptTokenId: number | bigint
+  receiptTokenId: number | bigint,
 ): string {
   return buildEntityId([chainId, receiptTokenManager.toLowerCase(), receiptTokenId]);
 }
@@ -27,4 +31,3 @@ export function getReceiptTokenId(
 export function pickTxHash(maybeHash: string | undefined): string | undefined {
   return maybeHash?.toLowerCase();
 }
-

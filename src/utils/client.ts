@@ -1,24 +1,24 @@
 import { createPublicClient, http } from "viem";
-import { sepolia, mainnet } from "viem/chains";
+import { mainnet, sepolia } from "viem/chains";
 
 const RPC_URL = process.env.RPC_URL;
 
-const getChain = (chainId: bigint) => {
-    if (chainId == BigInt(11155111)) {
-        return sepolia;
-    }
+const getChain = (chainId: number) => {
+  if (chainId === 11155111) {
+    return sepolia;
+  }
 
-    if (chainId == BigInt(1)) {
-        return mainnet;
-    }
+  if (chainId === 1) {
+    return mainnet;
+  }
 
-    throw new Error(`Unsupported chain id: ${chainId}`);
-}
+  throw new Error(`Unsupported chain id: ${chainId}`);
+};
 
-export const getClient = (chainId: bigint) => {
-    return createPublicClient({
-        chain: getChain(chainId),
-        batch: { multicall: true },
-        transport: http(RPC_URL, { batch: true}),
-    })
-}
+export const getClient = (chainId: number) => {
+  return createPublicClient({
+    chain: getChain(chainId),
+    batch: { multicall: true },
+    transport: http(RPC_URL, { batch: true }),
+  });
+};

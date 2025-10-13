@@ -7,7 +7,7 @@ networks:
   - name: ConvertibleDepositAuctioneer
     address:
     - 0xc14156AF3bF6c11b1c40C8f51f64bA5496870126
-    handler: src/EventHandlers.ts
+    handler: src/handlers/auctioneer.handlers.ts
     events:
     - event: AuctionParametersUpdated(address indexed depositAsset, uint256 newTarget, uint256 newTickSize, uint256 newMinPrice)
     - event: AuctionResult(address indexed depositAsset, uint256 ohmConvertible, uint256 target, uint8 periodIndex)
@@ -23,7 +23,7 @@ networks:
   - name: ConvertibleDepositFacility
     address:
     - 0x87568265eb6Ea27f37613d242D4192B6f6771269
-    handler: src/EventHandlers.ts
+    handler: src/handlers/depositFacility.handlers.ts
     events:
     - event: AssetCommitCancelled(address indexed asset, address indexed operator, uint256 amount)
     - event: AssetCommitWithdrawn(address indexed asset, address indexed operator, uint256 amount)
@@ -40,7 +40,7 @@ networks:
   - name: DepositRedemptionVault
     address:
     - 0x69b2Be653BAB628116b360818BE75a2d97b45C4a
-    handler: src/EventHandlers.ts
+    handler: src/handlers/depositRedemptionVault.handlers.ts
     events:
     - event: AnnualInterestRateSet(address indexed asset, address indexed facility, uint16 rate)
     - event: ClaimDefaultRewardPercentageSet(uint16 percent)
