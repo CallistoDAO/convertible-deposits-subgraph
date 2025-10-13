@@ -1,10 +1,10 @@
 type Asset {
   id: ID!
-  chainId: Int!
-  address: String!
+  chainId: Int! @index
+  address: String! @index
   decimals: Int!
-  name: String!
-  symbol: String!
+  name: String! @index
+  symbol: String! @index
 
   depositAssets: [DepositAsset!]! @derivedFrom(field: "asset")
 }
@@ -12,9 +12,9 @@ type Asset {
 # Deposit asset entity type
 type DepositAsset {
   id: ID!
-  chainId: Int!
+  chainId: Int! @index
   asset: Asset!
-  enabled: Boolean!
+  enabled: Boolean! @index
 
   periods: [DepositAssetPeriod!]! @derivedFrom(field: "depositAsset")
   auctioneers: [Auctioneer!]! @derivedFrom(field: "depositAsset")
@@ -23,12 +23,12 @@ type DepositAsset {
 
 type Auctioneer {
   id: ID!
-  chainId: Int!
-  address: String!
+  chainId: Int! @index
+  address: String! @index
   majorVersion: Int!
   minorVersion: Int!
   depositAsset: DepositAsset! # One asset per auctioneer
-  enabled: Boolean!
+  enabled: Boolean! @index
   auctionTrackingPeriod: Int!
   target: BigInt!
   targetDecimal: BigDecimal!
@@ -49,7 +49,7 @@ type Auctioneer {
 
 type AuctioneerDepositPeriod {
   id: ID!
-  chainId: Int!
+  chainId: Int! @index
   auctioneer: Auctioneer!
   depositAssetPeriod: DepositAssetPeriod!
 
@@ -68,9 +68,9 @@ type AuctioneerDepositPeriod {
 # Deposit Facility contract entity
 type DepositFacility {
   id: ID!
-  chainId: Int!
-  address: String!
-  enabled: Boolean!
+  chainId: Int! @index
+  address: String! @index
+  enabled: Boolean! @index
 
   disabledEvents: [ConvertibleDepositFacility_Disabled!]! @derivedFrom(field: "facility")
   enabledEvents: [ConvertibleDepositFacility_Enabled!]! @derivedFrom(field: "facility")
@@ -81,7 +81,7 @@ type DepositFacility {
 
 type DepositFacilityAsset {
   id: ID!
-  chainId: Int!
+  chainId: Int! @index
   facility: DepositFacility!
   depositAsset: DepositAsset!
 
@@ -97,15 +97,15 @@ type DepositFacilityAsset {
 
 type DepositFacilityAssetPeriod {
   id: ID!
-  chainId: Int!
+  chainId: Int! @index
   facilityAsset: DepositFacilityAsset!
   depositAssetPeriod: DepositAssetPeriod!
 
   reclaimRate: BigInt!
   reclaimRateDecimal: BigDecimal!
 
-  createdDepositEvents: [ConvertibleDepositFacility_CreatedDeposit!]! @derivedFrom(field: "facilityAssetPeriod")
   reclaimRateSetEvents: [ConvertibleDepositFacility_AssetPeriodReclaimRateSet!]! @derivedFrom(field: "facilityAssetPeriod")
+  createdDepositEvents: [ConvertibleDepositFacility_CreatedDeposit!]! @derivedFrom(field: "facilityAssetPeriod")
   convertedDepositEvents: [ConvertibleDepositFacility_ConvertedDeposit!]! @derivedFrom(field: "facilityAssetPeriod")
   reclaimedEvents: [ConvertibleDepositFacility_Reclaimed!]! @derivedFrom(field: "facilityAssetPeriod")
 }
@@ -113,9 +113,10 @@ type DepositFacilityAssetPeriod {
 # Deposit Redemption Vault contract entity
 type DepositRedemptionVault {
   id: ID!
-  chainId: Int!
-  address: String!
-  enabled: Boolean!
+  chainId: Int! @index
+  address: String! @index
+  enabled: Boolean! @index
+
   claimDefaultRewardPercentage: BigInt!
   claimDefaultRewardPercentageDecimal: BigDecimal!
 
@@ -129,7 +130,7 @@ type DepositRedemptionVault {
 
 type DepositRedemptionVaultAssetConfiguration {
   id: ID!
-  chainId: Int!
+  chainId: Int! @index
   redemptionVault: DepositRedemptionVault!
   facility: DepositFacility!
   depositAsset: DepositAsset!
@@ -145,8 +146,8 @@ type DepositRedemptionVaultAssetConfiguration {
 
 type Depositor {
   id: ID!
-  chainId: Int!
-  address: String!
+  chainId: Int! @index
+  address: String! @index
 
   bids: [ConvertibleDepositAuctioneer_Bid!]! @derivedFrom(field: "depositor")
   createdDeposits: [ConvertibleDepositFacility_CreatedDeposit!]! @derivedFrom(field: "depositor")
@@ -154,13 +155,12 @@ type Depositor {
   positions: [ConvertibleDepositPosition!]! @derivedFrom(field: "depositor")
   redemptions: [Redemption!]! @derivedFrom(field: "depositor")
   reclaimedEvents: [ConvertibleDepositFacility_Reclaimed!]! @derivedFrom(field: "depositor")
-  redemptionLoans: [Redemption!]! @derivedFrom(field: "depositor")
 }
 
 # Redemption entity to group lifecycle of a redemption
 type Redemption {
   id: ID!
-  chainId: Int!
+  chainId: Int! @index
   redemptionVault: DepositRedemptionVault!
   depositor: Depositor!
   depositAssetPeriod: DepositAssetPeriod!
@@ -170,16 +170,17 @@ type Redemption {
 
   amount: BigInt!
   amountDecimal: BigDecimal!
-  redeemableAt: BigInt!
+  redeemableAt: BigInt! @index
 
-  redemptionStartedEvents: [DepositRedemptionVault_RedemptionStarted!]! @derivedFrom(field: "redemption")
-  redemptionCancelledEvents: [DepositRedemptionVault_RedemptionCancelled!]! @derivedFrom(field: "redemption")
-  redemptionFinishedEvents: [DepositRedemptionVault_RedemptionFinished!]! @derivedFrom(field: "redemption")
+  startedEvents: [DepositRedemptionVault_RedemptionStarted!]! @derivedFrom(field: "redemption")
+  cancelledEvents: [DepositRedemptionVault_RedemptionCancelled!]! @derivedFrom(field: "redemption")
+  finishedEvents: [DepositRedemptionVault_RedemptionFinished!]! @derivedFrom(field: "redemption")
+  loans: [RedemptionLoan!]! @derivedFrom(field: "redemption")
 }
 
 type RedemptionLoan {
   id: ID!
-  chainId: Int!
+  chainId: Int! @index
   redemption: Redemption!
 
   initialPrincipal: BigInt!
@@ -189,24 +190,24 @@ type RedemptionLoan {
   interest: BigInt!
   interestDecimal: BigDecimal!
 
-  createdAt: BigInt!
-  dueDate: BigInt!
+  createdAt: BigInt! @index
+  dueDate: BigInt! @index
 
-  status: String!
+  status: String! @index # active, repaid, defaulted
 
-  loanCreatedEvents: [DepositRedemptionVault_LoanCreated!]! @derivedFrom(field: "redemptionLoan")
-  loanDefaultedEvents: [DepositRedemptionVault_LoanDefaulted!]! @derivedFrom(field: "redemptionLoan")
-  loanExtendedEvents: [DepositRedemptionVault_LoanExtended!]! @derivedFrom(field: "redemptionLoan")
-  loanRepaidEvents: [DepositRedemptionVault_LoanRepaid!]! @derivedFrom(field: "redemptionLoan")
+  createdEvents: [DepositRedemptionVault_LoanCreated!]! @derivedFrom(field: "redemptionLoan")
+  defaultedEvents: [DepositRedemptionVault_LoanDefaulted!]! @derivedFrom(field: "redemptionLoan")
+  extendedEvents: [DepositRedemptionVault_LoanExtended!]! @derivedFrom(field: "redemptionLoan")
+  repaidEvents: [DepositRedemptionVault_LoanRepaid!]! @derivedFrom(field: "redemptionLoan")
 }
 
 # Deposit asset period entity type
 type DepositAssetPeriod {
   id: ID!
-  chainId: Int!
+  chainId: Int! @index
   depositAsset: DepositAsset!
-  periodMonths: Int!
-  enabled: Boolean!
+  periodMonths: Int! @index
+  enabled: Boolean! @index
 
   receiptTokens: [ReceiptToken!]! @derivedFrom(field: "depositAssetPeriod")
   positions: [ConvertibleDepositPosition!]! @derivedFrom(field: "assetPeriod")
@@ -214,9 +215,9 @@ type DepositAssetPeriod {
 
 type ReceiptToken {
   id: ID!
-  chainId: Int!
-  receiptTokenManager: String!
-  receiptTokenId: BigInt!
+  chainId: Int! @index
+  receiptTokenManager: String! @index
+  receiptTokenId: BigInt! @index
   facility: DepositFacility!
   depositAssetPeriod: DepositAssetPeriod!
 
@@ -228,13 +229,13 @@ type ReceiptToken {
 # Convertible deposit position entity type
 type ConvertibleDepositPosition {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facility: DepositFacility!
-  positionId: BigInt!
+  positionId: BigInt! @index
   depositor: Depositor!
   assetPeriod: DepositAssetPeriod!
   receiptToken: ReceiptToken!
@@ -254,10 +255,10 @@ type ConvertibleDepositPosition {
 
 type ConvertibleDepositAuctioneer_AuctionParametersUpdated {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   auctioneer: Auctioneer!
   target: BigInt!
@@ -270,10 +271,10 @@ type ConvertibleDepositAuctioneer_AuctionParametersUpdated {
 
 type ConvertibleDepositAuctioneer_AuctionResult {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   auctioneer: Auctioneer!
   ohmConvertible: BigInt!
@@ -285,10 +286,10 @@ type ConvertibleDepositAuctioneer_AuctionResult {
 
 type ConvertibleDepositAuctioneer_AuctionTrackingPeriodUpdated {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   auctioneer: Auctioneer!
   auctionTrackingPeriod: BigInt!
@@ -296,10 +297,10 @@ type ConvertibleDepositAuctioneer_AuctionTrackingPeriodUpdated {
 
 type ConvertibleDepositAuctioneer_Bid {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   auctioneerDepositPeriod: AuctioneerDepositPeriod!
   depositor: Depositor!
@@ -317,70 +318,70 @@ type ConvertibleDepositAuctioneer_Bid {
 
 type ConvertibleDepositAuctioneer_DepositPeriodDisableQueued {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   auctioneerDepositPeriod: AuctioneerDepositPeriod!
 }
 
 type ConvertibleDepositAuctioneer_DepositPeriodDisabled {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   auctioneerDepositPeriod: AuctioneerDepositPeriod!
 }
 
 type ConvertibleDepositAuctioneer_DepositPeriodEnableQueued {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   auctioneerDepositPeriod: AuctioneerDepositPeriod!
 }
 
 type ConvertibleDepositAuctioneer_DepositPeriodEnabled {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   auctioneerDepositPeriod: AuctioneerDepositPeriod!
 }
 
 type ConvertibleDepositAuctioneer_Disabled {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   auctioneer: Auctioneer!
 }
 
 type ConvertibleDepositAuctioneer_Enabled {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   auctioneer: Auctioneer!
 }
 
 type ConvertibleDepositAuctioneer_TickStepUpdated {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   auctioneer: Auctioneer!
   newTickStep: BigInt!
@@ -389,10 +390,10 @@ type ConvertibleDepositAuctioneer_TickStepUpdated {
 
 type ConvertibleDepositFacility_AssetCommitCancelled {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facilityAsset: DepositFacilityAsset!
   operator: String!
@@ -405,10 +406,10 @@ type ConvertibleDepositFacility_AssetCommitCancelled {
 
 type ConvertibleDepositFacility_AssetCommitWithdrawn {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facilityAsset: DepositFacilityAsset!
   operator: String!
@@ -421,10 +422,10 @@ type ConvertibleDepositFacility_AssetCommitWithdrawn {
 
 type ConvertibleDepositFacility_AssetCommitted {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facilityAsset: DepositFacilityAsset!
   operator: String!
@@ -437,10 +438,10 @@ type ConvertibleDepositFacility_AssetCommitted {
 
 type ConvertibleDepositFacility_AssetPeriodReclaimRateSet {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facilityAssetPeriod: DepositFacilityAssetPeriod!
   reclaimRate: BigInt!
@@ -449,10 +450,10 @@ type ConvertibleDepositFacility_AssetPeriodReclaimRateSet {
 
 type ConvertibleDepositFacility_ClaimedYield {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facilityAsset: DepositFacilityAsset!
   amount: BigInt!
@@ -461,10 +462,10 @@ type ConvertibleDepositFacility_ClaimedYield {
 
 type ConvertibleDepositFacility_ConvertedDeposit {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facilityAssetPeriod: DepositFacilityAssetPeriod!
   receiptToken: ReceiptToken!
@@ -477,10 +478,10 @@ type ConvertibleDepositFacility_ConvertedDeposit {
 
 type ConvertibleDepositFacility_CreatedDeposit {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facilityAssetPeriod: DepositFacilityAssetPeriod!
   depositor: Depositor!
@@ -491,30 +492,30 @@ type ConvertibleDepositFacility_CreatedDeposit {
 
 type ConvertibleDepositFacility_Disabled {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facility: DepositFacility!
 }
 
 type ConvertibleDepositFacility_Enabled {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facility: DepositFacility!
 }
 
 type ConvertibleDepositFacility_OperatorAuthorized {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facility: DepositFacility!
   operator: String!
@@ -522,10 +523,10 @@ type ConvertibleDepositFacility_OperatorAuthorized {
 
 type ConvertibleDepositFacility_OperatorDeauthorized {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facility: DepositFacility!
   operator: String!
@@ -533,10 +534,10 @@ type ConvertibleDepositFacility_OperatorDeauthorized {
 
 type ConvertibleDepositFacility_Reclaimed {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   facilityAssetPeriod: DepositFacilityAssetPeriod!
   depositor: Depositor!
@@ -548,10 +549,10 @@ type ConvertibleDepositFacility_Reclaimed {
 
 type DepositRedemptionVault_AnnualInterestRateSet {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   assetConfiguration: DepositRedemptionVaultAssetConfiguration!
   rate: BigInt!
@@ -560,10 +561,10 @@ type DepositRedemptionVault_AnnualInterestRateSet {
 
 type DepositRedemptionVault_ClaimDefaultRewardPercentageSet {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   redemptionVault: DepositRedemptionVault!
   percent: BigInt!
@@ -572,30 +573,30 @@ type DepositRedemptionVault_ClaimDefaultRewardPercentageSet {
 
 type DepositRedemptionVault_Disabled {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   redemptionVault: DepositRedemptionVault!
 }
 
 type DepositRedemptionVault_Enabled {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   redemptionVault: DepositRedemptionVault!
 }
 
 type DepositRedemptionVault_FacilityAuthorized {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   redemptionVault: DepositRedemptionVault!
   facility: DepositFacility!
@@ -603,10 +604,10 @@ type DepositRedemptionVault_FacilityAuthorized {
 
 type DepositRedemptionVault_FacilityDeauthorized {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   redemptionVault: DepositRedemptionVault!
   facility: DepositFacility!
@@ -614,10 +615,10 @@ type DepositRedemptionVault_FacilityDeauthorized {
 
 type DepositRedemptionVault_LoanCreated {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   redemptionLoan: RedemptionLoan!
   amount: BigInt!
@@ -626,10 +627,10 @@ type DepositRedemptionVault_LoanCreated {
 
 type DepositRedemptionVault_LoanDefaulted {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   redemptionLoan: RedemptionLoan!
   principal: BigInt!
@@ -642,10 +643,10 @@ type DepositRedemptionVault_LoanDefaulted {
 
 type DepositRedemptionVault_LoanExtended {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   redemptionLoan: RedemptionLoan!
   newDueDate: BigInt!
@@ -653,10 +654,10 @@ type DepositRedemptionVault_LoanExtended {
 
 type DepositRedemptionVault_LoanRepaid {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   redemptionLoan: RedemptionLoan!
   principal: BigInt!
@@ -667,10 +668,10 @@ type DepositRedemptionVault_LoanRepaid {
 
 type DepositRedemptionVault_MaxBorrowPercentageSet {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   assetConfiguration: DepositRedemptionVaultAssetConfiguration!
   percent: BigInt!
@@ -679,10 +680,10 @@ type DepositRedemptionVault_MaxBorrowPercentageSet {
 
 type DepositRedemptionVault_RedemptionCancelled {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   redemption: Redemption!
   amount: BigInt!
@@ -693,10 +694,10 @@ type DepositRedemptionVault_RedemptionCancelled {
 
 type DepositRedemptionVault_RedemptionFinished {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   redemption: Redemption!
   amount: BigInt!
@@ -705,10 +706,10 @@ type DepositRedemptionVault_RedemptionFinished {
 
 type DepositRedemptionVault_RedemptionStarted {
   id: ID!
-  chainId: Int!
-  txHash: String!
-  block: BigInt!
-  timestamp: BigInt!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
 
   redemption: Redemption!
   amount: BigInt!
