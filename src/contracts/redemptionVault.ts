@@ -1,5 +1,5 @@
 import { experimental_createEffect, S } from "envio";
-import { DepositRedemptionVaultAbi } from "../abi/DepositRedemptioNVault";
+import { DepositRedemptionVaultAbi } from "../abi/DepositRedemptionVault";
 import { getClient } from "../utils/client";
 
 /**
