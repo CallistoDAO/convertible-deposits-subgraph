@@ -435,3 +435,5 @@ ConvertibleDepositFacility.Reclaimed.handler(async ({ event, context }) => {
   };
   context.ConvertibleDepositFacility_Reclaimed.set(entity);
 });
+
+// TODO add split event
