@@ -247,6 +247,7 @@ type ConvertibleDepositPosition {
 
   bids: [ConvertibleDepositAuctioneer_Bid!]! @derivedFrom(field: "position")
   createdDepositEvents: [ConvertibleDepositFacility_CreatedDeposit!]! @derivedFrom(field: "position")
+  convertedDepositEvents: [ConvertibleDepositFacility_ConvertedDeposit!]! @derivedFrom(field: "position")
   redemptions: [Redemption!]! @derivedFrom(field: "position")
 }
 
@@ -478,7 +479,7 @@ type ConvertibleDepositFacility_ConvertedDeposit {
   convertedAmount: BigInt!
   convertedAmountDecimal: BigDecimal!
 
-  convertedDeposits: ConvertibleDepositFacility_ConvertedDeposits!
+  event: ConvertibleDepositFacility_ConvertedDeposits!
 }
 
 type ConvertibleDepositFacility_ConvertedDeposits {
@@ -493,7 +494,7 @@ type ConvertibleDepositFacility_ConvertedDeposits {
   convertedAmount: BigInt!
   convertedAmountDecimal: BigDecimal!
 
-  convertedDeposits: [ConvertibleDepositFacility_ConvertedDeposit!]! @derivedFrom(field: "convertedDeposits")
+  convertedDeposits: [ConvertibleDepositFacility_ConvertedDeposit!]! @derivedFrom(field: "event")
 }
 
 type ConvertibleDepositFacility_CreatedDeposit {

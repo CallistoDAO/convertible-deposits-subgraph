@@ -280,7 +280,7 @@ ConvertibleDepositFacility.ConvertedDeposit.handler(async ({ event, context }) =
       depositAmountDecimal: toDecimal(depositConvertedAmount, assetDecimals),
       convertedAmount: convertedAmount,
       convertedAmountDecimal: toOhmDecimal(convertedAmount),
-      convertedDeposits_id: entity.id,
+      event_id: entity.id,
     };
     context.ConvertibleDepositFacility_ConvertedDeposit.set(convertedDepositEntity);
 
