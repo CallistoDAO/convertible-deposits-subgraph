@@ -16,13 +16,15 @@ import {
   {
     chain: 11155111 as const,
     interval: 3000, // 1 hour at 12 second blocks
+    startBlock: 9180152, // Activation
   },
-].forEach(({ chain, interval }) => {
+].forEach(({ chain, interval, startBlock }) => {
   onBlock(
     {
       name: "snapshot",
       chain: chain,
       interval,
+      startBlock,
     },
     async ({ block, context }) => {
       context.log.info(`Processing block ${block.number} on chain ${block.chainId}`);
