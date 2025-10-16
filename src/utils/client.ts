@@ -19,6 +19,6 @@ export const getClient = (chainId: number) => {
   return createPublicClient({
     chain: getChain(chainId),
     batch: { multicall: true },
-    transport: http(RPC_URL, { batch: true }),
+    transport: http(RPC_URL, { batch: false }),
   });
 };
