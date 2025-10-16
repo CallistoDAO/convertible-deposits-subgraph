@@ -26,6 +26,7 @@ import { getOrCreateAuctioneer, getOrCreateAuctioneerDepositPeriod } from "../en
 import { getOrCreateDepositFacility } from "../entities/depositFacility";
 import { getOrCreateDepositor } from "../entities/depositor";
 import { getOrCreatePosition } from "../entities/position";
+import { getOrCreateAuctioneerSnapshot, refreshAuctionState } from "../entities/snapshot";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
 import { getBlockId } from "../utils/ids";
 
@@ -61,17 +62,8 @@ ConvertibleDepositAuctioneer.AuctionParametersUpdated.handler(async ({ event, co
   };
   context.ConvertibleDepositAuctioneer_AuctionParametersUpdated.set(entity);
 
-  // Update auctioneer with new parameters
-  const updatedAuctioneer = {
-    ...auctioneer,
-    target: event.params.newTarget,
-    targetDecimal,
-    tickSize: event.params.newTickSize,
-    tickSizeDecimal,
-    minPrice: event.params.newMinPrice,
-    minPriceDecimal,
-  };
-  context.Auctioneer.set(updatedAuctioneer);
+  // Create snapshot with fresh contract data (no need to update auctioneer entity)
+  await refreshAuctionState(context, event.chainId, event.block.number, auctioneer);
 });
 
 ConvertibleDepositAuctioneer.AuctionResult.handler(async ({ event, context }) => {
@@ -96,6 +88,9 @@ ConvertibleDepositAuctioneer.AuctionResult.handler(async ({ event, context }) =>
     periodIndex: event.params.periodIndex,
   };
   context.ConvertibleDepositAuctioneer_AuctionResult.set(entity);
+
+  // Create snapshot after auction result (auction completed)
+  await getOrCreateAuctioneerSnapshot(context, event.chainId, event.block.number, auctioneer);
 });
 
 ConvertibleDepositAuctioneer.AuctionTrackingPeriodUpdated.handler(async ({ event, context }) => {
@@ -199,6 +194,9 @@ ConvertibleDepositAuctioneer.Bid.handler(async ({ event, context }) => {
     currentTickPriceDecimal: toDecimal(tickPrice, assetDecimals),
   };
   context.AuctioneerDepositPeriod.set(updatedAuctioneerDepositPeriod);
+
+  // Create snapshot after bid (day state/tick changes)
+  await getOrCreateAuctioneerSnapshot(context, event.chainId, event.block.number, auctioneer);
 });
 
 ConvertibleDepositAuctioneer.DepositPeriodDisableQueued.handler(async ({ event, context }) => {
@@ -252,6 +250,9 @@ ConvertibleDepositAuctioneer.DepositPeriodDisabled.handler(async ({ event, conte
     enabled: false,
   };
   context.AuctioneerDepositPeriod.set(updatedAuctioneerDepositPeriod);
+
+  // Create snapshot with fresh state
+  await refreshAuctionState(context, event.chainId, event.block.number, auctioneer);
 });
 
 ConvertibleDepositAuctioneer.DepositPeriodEnableQueued.handler(async ({ event, context }) => {
@@ -305,6 +306,9 @@ ConvertibleDepositAuctioneer.DepositPeriodEnabled.handler(async ({ event, contex
     enabled: true,
   };
   context.AuctioneerDepositPeriod.set(updatedAuctioneerDepositPeriod);
+
+  // Create snapshot with fresh state
+  await refreshAuctionState(context, event.chainId, event.block.number, auctioneer);
 });
 
 ConvertibleDepositAuctioneer.Disabled.handler(async ({ event, context }) => {
@@ -328,6 +332,9 @@ ConvertibleDepositAuctioneer.Disabled.handler(async ({ event, context }) => {
     enabled: false,
   };
   context.Auctioneer.set(updatedAuctioneer);
+
+  // Create snapshot with fresh state
+  await refreshAuctionState(context, event.chainId, event.block.number, updatedAuctioneer);
 });
 
 ConvertibleDepositAuctioneer.Enabled.handler(async ({ event, context }) => {
@@ -352,6 +359,9 @@ ConvertibleDepositAuctioneer.Enabled.handler(async ({ event, context }) => {
     enabled: true,
   };
   context.Auctioneer.set(updatedAuctioneer);
+
+  // Create snapshot with fresh state
+  await refreshAuctionState(context, event.chainId, event.block.number, updatedAuctioneer);
 });
 
 ConvertibleDepositAuctioneer.TickStepUpdated.handler(async ({ event, context }) => {

@@ -30,12 +30,6 @@ type Auctioneer {
   depositAsset: DepositAsset! # One asset per auctioneer
   enabled: Boolean! @index
   auctionTrackingPeriod: Int!
-  target: BigInt!
-  targetDecimal: BigDecimal!
-  tickSize: BigInt!
-  tickSizeDecimal: BigDecimal!
-  minPrice: BigInt!
-  minPriceDecimal: BigDecimal!
   tickStep: BigInt!
   tickStepDecimal: BigDecimal!
 
@@ -45,6 +39,8 @@ type Auctioneer {
   disabledEvents: [ConvertibleDepositAuctioneer_Disabled!]! @derivedFrom(field: "auctioneer")
   enabledEvents: [ConvertibleDepositAuctioneer_Enabled!]! @derivedFrom(field: "auctioneer")
   tickStepUpdatedEvents: [ConvertibleDepositAuctioneer_TickStepUpdated!]! @derivedFrom(field: "auctioneer")
+  depositPeriods: [AuctioneerDepositPeriod!]! @derivedFrom(field: "auctioneer")
+  snapshots: [AuctioneerSnapshot!]! @derivedFrom(field: "auctioneer")
 }
 
 type AuctioneerDepositPeriod {
@@ -52,17 +48,14 @@ type AuctioneerDepositPeriod {
   chainId: Int! @index
   auctioneer: Auctioneer!
   depositAssetPeriod: DepositAssetPeriod!
-
-  currentTickCapacity: BigInt!
-  currentTickCapacityDecimal: BigDecimal!
-  currentTickPrice: BigInt!
-  currentTickPriceDecimal: BigDecimal!
+  enabled: Boolean! @index
 
   depositPeriodDisableQueuedEvents: [ConvertibleDepositAuctioneer_DepositPeriodDisableQueued!]! @derivedFrom(field: "auctioneerDepositPeriod")
   depositPeriodDisabledEvents: [ConvertibleDepositAuctioneer_DepositPeriodDisabled!]! @derivedFrom(field: "auctioneerDepositPeriod")
   depositPeriodEnableQueuedEvents: [ConvertibleDepositAuctioneer_DepositPeriodEnableQueued!]! @derivedFrom(field: "auctioneerDepositPeriod")
   depositPeriodEnabledEvents: [ConvertibleDepositAuctioneer_DepositPeriodEnabled!]! @derivedFrom(field: "auctioneerDepositPeriod")
   bidEvents: [ConvertibleDepositAuctioneer_Bid!]! @derivedFrom(field: "auctioneerDepositPeriod")
+  snapshots: [AuctioneerDepositPeriodSnapshot!]! @derivedFrom(field: "auctioneerDepositPeriod")
 }
 
 # Deposit Facility contract entity
@@ -735,4 +728,93 @@ type DepositRedemptionVault_RedemptionStarted {
   redemption: Redemption!
   amount: BigInt!
   amountDecimal: BigDecimal!
+}
+
+# Snapshot entities for interval-based state tracking
+
+type LatestSnapshot {
+  id: ID! # "chainId" - one per chain
+  chainId: Int! @index
+
+  # Latest snapshot IDs - stored as string arrays (only active ones)
+  auctioneerSnapshotIds: [String!]!
+  facilitySnapshotIds: [String!]!
+  redemptionVaultSnapshotIds: [String!]!
+}
+
+type AuctioneerSnapshot {
+  id: ID!
+  chainId: Int! @index
+  block: BigInt! @index
+  # timestamp: BigInt! @index
+  auctioneer: Auctioneer!
+
+  # Day state from getDayState()
+  dayInitTimestamp: BigInt!
+  ohmSold: BigInt! # convertible from getDayState
+  ohmSoldDecimal: BigDecimal!
+
+  # Auction parameters (from contract)
+  isAuctionActive: Boolean! @index
+  target: BigInt!
+  targetDecimal: BigDecimal!
+  tickSize: BigInt!
+  tickSizeDecimal: BigDecimal!
+  minPrice: BigInt!
+  minPriceDecimal: BigDecimal!
+
+  # Deposit period snapshots
+  depositPeriodSnapshots: [AuctioneerDepositPeriodSnapshot!]! @derivedFrom(field: "auctioneerSnapshot")
+}
+
+type AuctioneerDepositPeriodSnapshot {
+  id: ID!
+  chainId: Int! @index
+  block: BigInt! @index
+  # timestamp: BigInt! @index
+
+  auctioneerSnapshot: AuctioneerSnapshot!
+  auctioneerDepositPeriod: AuctioneerDepositPeriod!
+
+  # Current tick state for this specific period
+  currentTickPrice: BigInt!
+  currentTickPriceDecimal: BigDecimal!
+  currentTickCapacity: BigInt!
+  currentTickCapacityDecimal: BigDecimal!
+}
+
+type FacilitySnapshot {
+  id: ID!
+  chainId: Int! @index
+  block: BigInt! @index
+  # timestamp: BigInt! @index
+  facility: DepositFacility!
+  depositAsset: DepositAsset!
+
+  # Deposit state - incremental counters (updated on events)
+  uniqueDepositors: Int!
+  totalDeposited: BigInt!
+  totalDepositedDecimal: BigDecimal!
+
+  # Claimable yield (from contract call)
+  claimableYield: BigInt!
+  claimableYieldDecimal: BigDecimal!
+}
+
+type RedemptionVaultSnapshot {
+  id: ID!
+  chainId: Int! @index
+  block: BigInt! @index
+  # timestamp: BigInt! @index
+  redemptionVault: DepositRedemptionVault!
+  depositAsset: DepositAsset!
+
+  # Pending redemption (from querying Redemption entities with redeemableAt > current timestamp)
+  totalPendingRedemption: BigInt!
+  totalPendingRedemptionDecimal: BigDecimal!
+
+  # Loan state (from querying RedemptionLoan entities by status)
+  outstandingLoansCount: Int!
+  outstandingLoanPrincipal: BigInt!
+  outstandingLoanPrincipalDecimal: BigDecimal!
 }
