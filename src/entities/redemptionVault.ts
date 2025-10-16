@@ -3,6 +3,7 @@ import type {
   DepositRedemptionVaultAssetConfiguration,
 } from "generated";
 import type { HandlerContext } from "generated/src/Types";
+import type { Hex } from "viem";
 import {
   fetchClaimDefaultRewardPercentage,
   fetchRedemptionVaultInterestRate,
@@ -16,7 +17,7 @@ import { getOrCreateDepositFacility } from "./depositFacility";
 export async function getOrCreateRedemptionVault(
   context: HandlerContext,
   chainId: number,
-  address: string,
+  address: Hex,
 ): Promise<DepositRedemptionVault> {
   const id = getAddressId(chainId, address);
   const existing = await context.DepositRedemptionVault.get(id);
@@ -43,9 +44,9 @@ export async function getOrCreateRedemptionVault(
 export async function getOrCreateRedemptionVaultAssetConfiguration(
   context: HandlerContext,
   chainId: number,
-  redemptionVaultAddress: string,
-  facilityAddress: string,
-  depositAssetAddress: string,
+  redemptionVaultAddress: Hex,
+  facilityAddress: Hex,
+  depositAssetAddress: Hex,
 ): Promise<DepositRedemptionVaultAssetConfiguration> {
   const id = buildEntityId([chainId, redemptionVaultAddress, facilityAddress, depositAssetAddress]);
   const existing = await context.DepositRedemptionVaultAssetConfiguration.get(id);

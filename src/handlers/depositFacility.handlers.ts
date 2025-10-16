@@ -17,8 +17,9 @@ import {
   type ConvertibleDepositFacility_OperatorDeauthorized,
   type ConvertibleDepositFacility_Reclaimed,
 } from "generated";
+import type { Hex } from "viem";
 import { fetchPositions, fetchUserPositionIds } from "../contracts/position";
-import { getAssetDecimals } from "../entities/asset";
+import { getAssetDecimals, getDepositAsset, getDepositAssetPeriod } from "../entities/asset";
 import {
   getOrCreateDepositFacility,
   getOrCreateDepositFacilityAsset,
@@ -26,6 +27,11 @@ import {
 } from "../entities/depositFacility";
 import { getOrCreateDepositor } from "../entities/depositor";
 import { getOrCreatePosition } from "../entities/position";
+import {
+  getOrCreateDepositFacilityAssetSnapshot,
+  getOrCreateDepositFacilitySnapshot,
+  updateFacilityAssetDeposited,
+} from "../entities/snapshot";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
 import { buildEntityId, getBlockId, getPositionId } from "../utils/ids";
 
@@ -36,10 +42,10 @@ ConvertibleDepositFacility.AssetCommitCancelled.handler(async ({ event, context 
   const facilityAsset = await getOrCreateDepositFacilityAsset(
     context,
     event.chainId,
-    event.srcAddress,
-    event.params.asset,
+    event.srcAddress as Hex,
+    event.params.asset as Hex,
   );
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset);
+  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset as Hex);
 
   // Calculate committed amount
   const committedAmount = facilityAsset.committedAmount - event.params.amount;
@@ -76,10 +82,10 @@ ConvertibleDepositFacility.AssetCommitWithdrawn.handler(async ({ event, context 
   const facilityAsset = await getOrCreateDepositFacilityAsset(
     context,
     event.chainId,
-    event.srcAddress,
-    event.params.asset,
+    event.srcAddress as Hex,
+    event.params.asset as Hex,
   );
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset);
+  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset as Hex);
 
   // Calculate committed amount
   const committedAmount = facilityAsset.committedAmount - event.params.amount;
@@ -116,10 +122,10 @@ ConvertibleDepositFacility.AssetCommitted.handler(async ({ event, context }) => 
   const facilityAsset = await getOrCreateDepositFacilityAsset(
     context,
     event.chainId,
-    event.srcAddress,
-    event.params.asset,
+    event.srcAddress as Hex,
+    event.params.asset as Hex,
   );
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset);
+  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset as Hex);
 
   // Calculate committed amount
   const committedAmount = facilityAsset.committedAmount + event.params.amount;
@@ -156,8 +162,8 @@ ConvertibleDepositFacility.AssetPeriodReclaimRateSet.handler(async ({ event, con
   const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
     context,
     event.chainId,
-    event.srcAddress,
-    event.params.asset,
+    event.srcAddress as Hex,
+    event.params.asset as Hex,
     Number(event.params.depositPeriod),
   );
 
@@ -190,10 +196,10 @@ ConvertibleDepositFacility.ClaimedYield.handler(async ({ event, context }) => {
   const facilityAsset = await getOrCreateDepositFacilityAsset(
     context,
     event.chainId,
-    event.srcAddress,
-    event.params.asset,
+    event.srcAddress as Hex,
+    event.params.asset as Hex,
   );
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset);
+  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset as Hex);
 
   // Record event
   const entity: ConvertibleDepositFacility_ClaimedYield = {
@@ -207,21 +213,49 @@ ConvertibleDepositFacility.ClaimedYield.handler(async ({ event, context }) => {
     amountDecimal: toDecimal(event.params.amount, assetDecimals),
   };
   context.ConvertibleDepositFacility_ClaimedYield.set(entity);
+
+  // Create/update facility asset snapshot to refresh claimable yield
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.srcAddress as Hex,
+  );
+  const depositAsset = await getDepositAsset(context, facilityAsset.depositAsset_id);
+  const facilitySnapshot = await getOrCreateDepositFacilitySnapshot(
+    context,
+    event.chainId,
+    event.block.number,
+    event.block.timestamp,
+    facility,
+  );
+  await getOrCreateDepositFacilityAssetSnapshot(
+    context,
+    event.chainId,
+    event.block.number,
+    event.block.timestamp,
+    facilitySnapshot,
+    facility,
+    depositAsset,
+  );
 });
 
 ConvertibleDepositFacility.ConvertedDeposit.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
 
   // Create/fetch records
-  const depositor = await getOrCreateDepositor(context, event.chainId, event.params.depositor);
+  const depositor = await getOrCreateDepositor(
+    context,
+    event.chainId,
+    event.params.depositor as Hex,
+  );
   const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
     context,
     event.chainId,
-    event.srcAddress,
-    event.params.asset,
+    event.srcAddress as Hex,
+    event.params.asset as Hex,
     Number(event.params.periodMonths),
   );
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset);
+  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset as Hex);
 
   // Create record for the original event
   const entity: ConvertibleDepositFacility_ConvertedDeposits = {
@@ -240,7 +274,7 @@ ConvertibleDepositFacility.ConvertedDeposit.handler(async ({ event, context }) =
   // Update positions of depositor for this asset period
   const contractPositionIds = await context.effect(fetchUserPositionIds, {
     chainId: event.chainId,
-    userAddress: event.params.depositor,
+    userAddress: event.params.depositor as Hex,
   });
   const contractPositions = await context.effect(fetchPositions, {
     chainId: event.chainId,
@@ -292,6 +326,27 @@ ConvertibleDepositFacility.ConvertedDeposit.handler(async ({ event, context }) =
     };
     context.ConvertibleDepositPosition.set(updatedPosition);
   }
+
+  // Update facility asset snapshot with withdrawal (negative delta)
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.srcAddress as Hex,
+  );
+  const depositAssetPeriod = await getDepositAssetPeriod(
+    context,
+    facilityAssetPeriod.depositAssetPeriod_id,
+  );
+  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
+  await updateFacilityAssetDeposited(
+    context,
+    event.chainId,
+    event.block.number,
+    event.block.timestamp,
+    facility,
+    depositAsset,
+    -event.params.depositAmount, // Negative for withdrawal
+  );
 });
 
 ConvertibleDepositFacility.CreatedDeposit.handler(async ({ event, context }) => {
@@ -301,24 +356,28 @@ ConvertibleDepositFacility.CreatedDeposit.handler(async ({ event, context }) => 
   const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
     context,
     event.chainId,
-    event.srcAddress,
-    event.params.asset,
+    event.srcAddress as Hex,
+    event.params.asset as Hex,
     Number(event.params.periodMonths),
   );
-  const depositor = await getOrCreateDepositor(context, event.chainId, event.params.depositor);
+  const depositor = await getOrCreateDepositor(
+    context,
+    event.chainId,
+    event.params.depositor as Hex,
+  );
   const position = await getOrCreatePosition(
     context,
     event.chainId,
-    event.srcAddress,
-    event.params.asset,
+    event.srcAddress as Hex,
+    event.params.asset as Hex,
     Number(event.params.periodMonths),
     event.params.positionId,
-    event.params.depositor,
-    event.transaction.hash,
+    event.params.depositor as Hex,
+    event.transaction.hash as Hex,
     BigInt(event.block.number),
     BigInt(event.block.timestamp),
   );
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset);
+  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset as Hex);
 
   // Record event
   const entity: ConvertibleDepositFacility_CreatedDeposit = {
@@ -344,13 +403,38 @@ ConvertibleDepositFacility.CreatedDeposit.handler(async ({ event, context }) => 
     remainingAmountDecimal: toDecimal(event.params.depositAmount, assetDecimals),
   };
   context.ConvertibleDepositPosition.set(updatedPosition);
+
+  // Update facility asset snapshot with deposit
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.srcAddress as Hex,
+  );
+  const depositAssetPeriod = await getDepositAssetPeriod(
+    context,
+    facilityAssetPeriod.depositAssetPeriod_id,
+  );
+  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
+  await updateFacilityAssetDeposited(
+    context,
+    event.chainId,
+    event.block.number,
+    event.block.timestamp,
+    facility,
+    depositAsset,
+    event.params.depositAmount,
+  );
 });
 
 ConvertibleDepositFacility.Disabled.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
 
   // Create/fetch records
-  const facility = await getOrCreateDepositFacility(context, event.chainId, event.srcAddress);
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.srcAddress as Hex,
+  );
 
   // Record event
   const entity: ConvertibleDepositFacility_Disabled = {
@@ -375,7 +459,11 @@ ConvertibleDepositFacility.Enabled.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
 
   // Create/fetch records
-  const facility = await getOrCreateDepositFacility(context, event.chainId, event.srcAddress);
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.srcAddress as Hex,
+  );
 
   // Record event
   const entity: ConvertibleDepositFacility_Enabled = {
@@ -400,7 +488,11 @@ ConvertibleDepositFacility.OperatorAuthorized.handler(async ({ event, context })
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
 
   // Create/fetch records
-  const facility = await getOrCreateDepositFacility(context, event.chainId, event.srcAddress);
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.srcAddress as Hex,
+  );
 
   // Record event
   const entity: ConvertibleDepositFacility_OperatorAuthorized = {
@@ -419,7 +511,11 @@ ConvertibleDepositFacility.OperatorDeauthorized.handler(async ({ event, context 
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
 
   // Create/fetch records
-  const facility = await getOrCreateDepositFacility(context, event.chainId, event.srcAddress);
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.srcAddress as Hex,
+  );
 
   // Record event
   const entity: ConvertibleDepositFacility_OperatorDeauthorized = {
@@ -441,12 +537,16 @@ ConvertibleDepositFacility.Reclaimed.handler(async ({ event, context }) => {
   const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
     context,
     event.chainId,
-    event.srcAddress,
-    event.params.depositToken,
+    event.srcAddress as Hex,
+    event.params.depositToken as Hex,
     Number(event.params.depositPeriod),
   );
-  const depositor = await getOrCreateDepositor(context, event.chainId, event.params.user);
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.depositToken);
+  const depositor = await getOrCreateDepositor(context, event.chainId, event.params.user as Hex);
+  const assetDecimals = await getAssetDecimals(
+    context,
+    event.chainId,
+    event.params.depositToken as Hex,
+  );
 
   // Record event
   const entity: ConvertibleDepositFacility_Reclaimed = {
@@ -463,6 +563,27 @@ ConvertibleDepositFacility.Reclaimed.handler(async ({ event, context }) => {
     forfeitedAmountDecimal: toDecimal(event.params.forfeitedAmount, assetDecimals),
   };
   context.ConvertibleDepositFacility_Reclaimed.set(entity);
+
+  // Update facility asset snapshot with withdrawal (negative delta)
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.srcAddress as Hex,
+  );
+  const depositAssetPeriod = await getDepositAssetPeriod(
+    context,
+    facilityAssetPeriod.depositAssetPeriod_id,
+  );
+  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
+  await updateFacilityAssetDeposited(
+    context,
+    event.chainId,
+    event.block.number,
+    event.block.timestamp,
+    facility,
+    depositAsset,
+    -event.params.reclaimedAmount, // Negative for withdrawal
+  );
 });
 
 // TODO add split event

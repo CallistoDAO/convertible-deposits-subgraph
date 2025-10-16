@@ -1,5 +1,6 @@
 import type { Redemption } from "generated";
 import type { HandlerContext } from "generated/src/Types";
+import type { Hex } from "viem";
 import { fetchRedemption } from "../contracts/redemptionVault";
 import { toDecimal } from "../utils/decimal";
 import { buildEntityId, getPositionId } from "../utils/ids";
@@ -16,11 +17,11 @@ const UINT256_MAX = BigInt(
 export async function getOrCreateRedemption(
   context: HandlerContext,
   chainId: number,
-  redemptionVaultAddress: string,
-  facilityAddress: string,
-  depositAssetAddress: string,
+  redemptionVaultAddress: Hex,
+  facilityAddress: Hex,
+  depositAssetAddress: Hex,
   depositAssetPeriodMonths: number,
-  userAddress: string,
+  userAddress: Hex,
   redemptionId: number,
 ): Promise<Redemption> {
   const id = buildEntityId([chainId, userAddress, redemptionId]);
@@ -82,7 +83,7 @@ export async function getOrCreateRedemption(
 export async function getRedemption(
   context: HandlerContext,
   chainId: number,
-  userAddress: string,
+  userAddress: Hex,
   redemptionId: number,
 ): Promise<Redemption> {
   const id = buildEntityId([chainId, userAddress, redemptionId]);

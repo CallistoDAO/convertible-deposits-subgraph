@@ -82,3 +82,33 @@ export const fetchDepositFacilityAssetCommittedAmount = experimental_createEffec
     return result;
   },
 );
+
+/**
+ * Fetch facility claimable yield
+ */
+export const fetchFacilityClaimableYield = experimental_createEffect(
+  {
+    name: "fetchFacilityClaimableYield",
+    input: {
+      chainId: S.number,
+      facilityAddress: S.string,
+      assetAddress: S.string,
+    },
+    output: S.bigint,
+    cache: true,
+  },
+  async ({ input }) => {
+    const client = getClient(input.chainId);
+    const facilityAddress = input.facilityAddress as `0x${string}`;
+    const assetAddress = input.assetAddress as `0x${string}`;
+
+    const result = await client.readContract({
+      address: facilityAddress,
+      abi: ConvertibleDepositFacilityAbi,
+      functionName: "previewClaimYield",
+      args: [assetAddress],
+    });
+
+    return result;
+  },
+);

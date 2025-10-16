@@ -15,6 +15,7 @@ import {
   type ConvertibleDepositAuctioneer_Enabled,
   type ConvertibleDepositAuctioneer_TickStepUpdated,
 } from "generated";
+import type { Hex } from "viem";
 import { fetchAuctioneerCurrentTick } from "../contracts/auctioneer";
 import {
   getDepositAssetDecimals,
@@ -26,16 +27,19 @@ import { getOrCreateAuctioneer, getOrCreateAuctioneerDepositPeriod } from "../en
 import { getOrCreateDepositFacility } from "../entities/depositFacility";
 import { getOrCreateDepositor } from "../entities/depositor";
 import { getOrCreatePosition } from "../entities/position";
+import { getOrCreateAuctioneerSnapshot, refreshAuctionState } from "../entities/snapshot";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
 import { getBlockId } from "../utils/ids";
+// Enables the block handler to run
+import "./block.handlers";
 
 ConvertibleDepositAuctioneer.AuctionParametersUpdated.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress);
+  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
   const depositAsset = await getOrCreateDepositAsset(
     context,
     event.chainId,
-    event.params.depositAsset,
+    event.params.depositAsset as Hex,
   );
   const assetDecimals = await getDepositAssetDecimals(context, depositAsset.id);
 
@@ -61,22 +65,19 @@ ConvertibleDepositAuctioneer.AuctionParametersUpdated.handler(async ({ event, co
   };
   context.ConvertibleDepositAuctioneer_AuctionParametersUpdated.set(entity);
 
-  // Update auctioneer with new parameters
-  const updatedAuctioneer = {
-    ...auctioneer,
-    target: event.params.newTarget,
-    targetDecimal,
-    tickSize: event.params.newTickSize,
-    tickSizeDecimal,
-    minPrice: event.params.newMinPrice,
-    minPriceDecimal,
-  };
-  context.Auctioneer.set(updatedAuctioneer);
+  // Create snapshot with fresh contract data (no need to update auctioneer entity)
+  await refreshAuctionState(
+    context,
+    event.chainId,
+    event.block.number,
+    event.block.timestamp,
+    auctioneer,
+  );
 });
 
 ConvertibleDepositAuctioneer.AuctionResult.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress);
+  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
 
   // Calculate decimals
   const ohmConvertibleDecimal = toOhmDecimal(event.params.ohmConvertible);
@@ -96,11 +97,20 @@ ConvertibleDepositAuctioneer.AuctionResult.handler(async ({ event, context }) =>
     periodIndex: event.params.periodIndex,
   };
   context.ConvertibleDepositAuctioneer_AuctionResult.set(entity);
+
+  // Create snapshot after auction result (auction completed)
+  await getOrCreateAuctioneerSnapshot(
+    context,
+    event.chainId,
+    event.block.number,
+    event.block.timestamp,
+    auctioneer,
+  );
 });
 
 ConvertibleDepositAuctioneer.AuctionTrackingPeriodUpdated.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress);
+  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
 
   // Record the AuctionTrackingPeriodUpdated event
   const entity: ConvertibleDepositAuctioneer_AuctionTrackingPeriodUpdated = {
@@ -125,29 +135,33 @@ ConvertibleDepositAuctioneer.AuctionTrackingPeriodUpdated.handler(async ({ event
 
 ConvertibleDepositAuctioneer.Bid.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress);
-  const facility = await getOrCreateDepositFacility(context, event.chainId, event.srcAddress);
+  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.srcAddress as Hex,
+  );
   const auctioneerDepositPeriod = await getOrCreateAuctioneerDepositPeriod(
     context,
     event.chainId,
     auctioneer,
-    event.params.depositAsset,
+    event.params.depositAsset as Hex,
     Number(event.params.depositPeriod),
   );
   const depositAssetPeriod = await getDepositAssetPeriod(
     context,
     auctioneerDepositPeriod.depositAssetPeriod_id,
   );
-  const depositor = await getOrCreateDepositor(context, event.chainId, event.params.bidder);
+  const depositor = await getOrCreateDepositor(context, event.chainId, event.params.bidder as Hex);
   const position = await getOrCreatePosition(
     context,
     event.chainId,
-    facility.address,
-    event.params.depositAsset,
+    facility.address as Hex,
+    event.params.depositAsset as Hex,
     depositAssetPeriod.periodMonths,
     event.params.positionId,
-    event.params.bidder,
-    event.transaction.hash,
+    event.params.bidder as Hex,
+    event.transaction.hash as Hex,
     BigInt(event.block.number),
     BigInt(event.block.timestamp),
   );
@@ -157,7 +171,7 @@ ConvertibleDepositAuctioneer.Bid.handler(async ({ event, context }) => {
   // Fetch tick data from contract
   const tickData = await context.effect(fetchAuctioneerCurrentTick, {
     chainId: event.chainId,
-    address: event.srcAddress,
+    address: event.srcAddress as Hex,
     depositPeriod: Number(event.params.depositPeriod),
   });
 
@@ -199,16 +213,25 @@ ConvertibleDepositAuctioneer.Bid.handler(async ({ event, context }) => {
     currentTickPriceDecimal: toDecimal(tickPrice, assetDecimals),
   };
   context.AuctioneerDepositPeriod.set(updatedAuctioneerDepositPeriod);
+
+  // Create snapshot after bid (day state/tick changes)
+  await getOrCreateAuctioneerSnapshot(
+    context,
+    event.chainId,
+    event.block.number,
+    event.block.timestamp,
+    auctioneer,
+  );
 });
 
 ConvertibleDepositAuctioneer.DepositPeriodDisableQueued.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress);
+  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
   const auctioneerDepositPeriod = await getOrCreateAuctioneerDepositPeriod(
     context,
     event.chainId,
     auctioneer,
-    event.params.depositAsset,
+    event.params.depositAsset as Hex,
     Number(event.params.depositPeriod),
   );
 
@@ -226,12 +249,12 @@ ConvertibleDepositAuctioneer.DepositPeriodDisableQueued.handler(async ({ event, 
 
 ConvertibleDepositAuctioneer.DepositPeriodDisabled.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress);
+  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
   const auctioneerDepositPeriod = await getOrCreateAuctioneerDepositPeriod(
     context,
     event.chainId,
     auctioneer,
-    event.params.depositAsset,
+    event.params.depositAsset as Hex,
     Number(event.params.depositPeriod),
   );
 
@@ -252,16 +275,25 @@ ConvertibleDepositAuctioneer.DepositPeriodDisabled.handler(async ({ event, conte
     enabled: false,
   };
   context.AuctioneerDepositPeriod.set(updatedAuctioneerDepositPeriod);
+
+  // Create snapshot with fresh state
+  await refreshAuctionState(
+    context,
+    event.chainId,
+    event.block.number,
+    event.block.timestamp,
+    auctioneer,
+  );
 });
 
 ConvertibleDepositAuctioneer.DepositPeriodEnableQueued.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress);
+  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
   const auctioneerDepositPeriod = await getOrCreateAuctioneerDepositPeriod(
     context,
     event.chainId,
     auctioneer,
-    event.params.depositAsset,
+    event.params.depositAsset as Hex,
     Number(event.params.depositPeriod),
   );
 
@@ -279,12 +311,12 @@ ConvertibleDepositAuctioneer.DepositPeriodEnableQueued.handler(async ({ event, c
 
 ConvertibleDepositAuctioneer.DepositPeriodEnabled.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress);
+  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
   const auctioneerDepositPeriod = await getOrCreateAuctioneerDepositPeriod(
     context,
     event.chainId,
     auctioneer,
-    event.params.depositAsset,
+    event.params.depositAsset as Hex,
     Number(event.params.depositPeriod),
   );
 
@@ -305,11 +337,20 @@ ConvertibleDepositAuctioneer.DepositPeriodEnabled.handler(async ({ event, contex
     enabled: true,
   };
   context.AuctioneerDepositPeriod.set(updatedAuctioneerDepositPeriod);
+
+  // Create snapshot with fresh state
+  await refreshAuctionState(
+    context,
+    event.chainId,
+    event.block.number,
+    event.block.timestamp,
+    auctioneer,
+  );
 });
 
 ConvertibleDepositAuctioneer.Disabled.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress);
+  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
 
   // Record the Disabled event
   const entity: ConvertibleDepositAuctioneer_Disabled = {
@@ -328,11 +369,20 @@ ConvertibleDepositAuctioneer.Disabled.handler(async ({ event, context }) => {
     enabled: false,
   };
   context.Auctioneer.set(updatedAuctioneer);
+
+  // Create snapshot with fresh state
+  await refreshAuctionState(
+    context,
+    event.chainId,
+    event.block.number,
+    event.block.timestamp,
+    updatedAuctioneer,
+  );
 });
 
 ConvertibleDepositAuctioneer.Enabled.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress);
+  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
 
   // Record the Enabled event
   const entity: ConvertibleDepositAuctioneer_Enabled = {
@@ -352,11 +402,20 @@ ConvertibleDepositAuctioneer.Enabled.handler(async ({ event, context }) => {
     enabled: true,
   };
   context.Auctioneer.set(updatedAuctioneer);
+
+  // Create snapshot with fresh state
+  await refreshAuctionState(
+    context,
+    event.chainId,
+    event.block.number,
+    event.block.timestamp,
+    updatedAuctioneer,
+  );
 });
 
 ConvertibleDepositAuctioneer.TickStepUpdated.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress);
+  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
 
   // Calculate decimals
   const tickStepDecimal = toBpsDecimal(event.params.newTickStep);

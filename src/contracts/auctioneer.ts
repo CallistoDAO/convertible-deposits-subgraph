@@ -168,3 +168,90 @@ export const fetchAuctioneerParameters = experimental_createEffect(
     return result;
   },
 );
+
+/**
+ * Fetch auctioneer day state (getDayState)
+ */
+export const fetchAuctioneerDayState = experimental_createEffect(
+  {
+    name: "fetchAuctioneerDayState",
+    input: {
+      chainId: S.number,
+      address: S.string,
+    },
+    output: S.schema({
+      dayInitTimestamp: S.bigint,
+      convertible: S.bigint,
+    }),
+    cache: true,
+  },
+  async ({ input }) => {
+    const client = getClient(input.chainId);
+    const auctioneerAddress = input.address as `0x${string}`;
+
+    const result = await client.readContract({
+      address: auctioneerAddress,
+      abi: ConvertibleDepositAuctioneerAbi,
+      functionName: "getDayState",
+    });
+
+    return {
+      dayInitTimestamp: BigInt(result.initTimestamp),
+      convertible: result.convertible,
+    };
+  },
+);
+
+/**
+ * Fetch auctioneer active status
+ */
+export const fetchAuctioneerIsActive = experimental_createEffect(
+  {
+    name: "fetchAuctioneerIsActive",
+    input: {
+      chainId: S.number,
+      address: S.string,
+    },
+    output: S.boolean,
+    cache: true,
+  },
+  async ({ input }) => {
+    const client = getClient(input.chainId);
+    const auctioneerAddress = input.address as `0x${string}`;
+
+    const result = await client.readContract({
+      address: auctioneerAddress,
+      abi: ConvertibleDepositAuctioneerAbi,
+      functionName: "isActive",
+    });
+
+    return result;
+  },
+);
+
+/**
+ * Fetch auctioneer enabled deposit periods
+ */
+export const fetchAuctioneerEnabledPeriods = experimental_createEffect(
+  {
+    name: "fetchAuctioneerEnabledPeriods",
+    input: {
+      chainId: S.number,
+      address: S.string,
+    },
+    output: S.array(S.number),
+    cache: true,
+  },
+  async ({ input }) => {
+    const client = getClient(input.chainId);
+    const auctioneerAddress = input.address as `0x${string}`;
+
+    const result = await client.readContract({
+      address: auctioneerAddress,
+      abi: ConvertibleDepositAuctioneerAbi,
+      functionName: "getDepositPeriods",
+    });
+
+    return [...result];
+  },
+);
