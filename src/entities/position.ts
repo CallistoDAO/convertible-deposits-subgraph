@@ -8,6 +8,10 @@ import { getOrCreateDepositFacility } from "./depositFacility";
 import { getOrCreateDepositor } from "./depositor";
 import { getOrCreateReceiptToken } from "./receiptToken";
 
+const UINT256_MAX = BigInt(
+  "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+);
+
 export async function getOrCreatePosition(
   context: HandlerContext,
   chainId: number,
@@ -47,6 +51,12 @@ export async function getOrCreatePosition(
     positionId,
   });
 
+  // Determine the conversion price
+  let conversionPrice: bigint | undefined;
+  if (position.conversionPrice !== UINT256_MAX) {
+    conversionPrice = position.conversionPrice;
+  }
+
   const created: ConvertibleDepositPosition = {
     id,
     facility_id: facility.id,
@@ -61,8 +71,8 @@ export async function getOrCreatePosition(
     initialAmountDecimal: toDecimal(position.remainingDeposit, assetDecimals),
     remainingAmount: position.remainingDeposit,
     remainingAmountDecimal: toDecimal(position.remainingDeposit, assetDecimals),
-    conversionPrice: undefined,
-    conversionPriceDecimal: undefined,
+    conversionPrice: conversionPrice,
+    conversionPriceDecimal: conversionPrice ? toDecimal(conversionPrice, assetDecimals) : undefined,
     receiptToken_id: receiptToken.id,
   };
   context.ConvertibleDepositPosition.set(created);
