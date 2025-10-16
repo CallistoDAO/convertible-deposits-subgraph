@@ -9,6 +9,7 @@ export const fetchBlockTimestamp = experimental_createEffect(
       blockNumber: S.number,
     },
     output: S.bigint,
+    cache: true,
   },
   async ({ input }) => {
     const client = getClient(input.chainId);
