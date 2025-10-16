@@ -78,6 +78,7 @@ export async function getOrCreateAuctioneerSnapshot(
   context: HandlerContext,
   chainId: number,
   blockNumber: number | bigint,
+  timestamp: number | bigint,
   auctioneer: Auctioneer,
 ): Promise<AuctioneerSnapshot> {
   const snapshotId = getAuctioneerSnapshotId(chainId, blockNumber, auctioneer.address);
@@ -116,6 +117,7 @@ export async function getOrCreateAuctioneerSnapshot(
     id: snapshotId,
     chainId,
     block: BigInt(blockNumber),
+    timestamp: BigInt(timestamp),
     auctioneer_id: auctioneer.id,
     dayInitTimestamp: dayState.dayInitTimestamp,
     ohmSold: dayState.convertible,
@@ -139,6 +141,7 @@ export async function getOrCreateAuctioneerSnapshot(
       context,
       chainId,
       blockNumber,
+      timestamp,
       snapshot,
       auctioneerDepositPeriod,
     );
@@ -154,6 +157,7 @@ export async function getOrCreateAuctioneerDepositPeriodSnapshot(
   context: HandlerContext,
   chainId: number,
   blockNumber: number | bigint,
+  timestamp: number | bigint,
   auctioneerSnapshot: AuctioneerSnapshot,
   auctioneerDepositPeriod: AuctioneerDepositPeriod,
 ): Promise<AuctioneerDepositPeriodSnapshot> {
@@ -193,6 +197,7 @@ export async function getOrCreateAuctioneerDepositPeriodSnapshot(
     id: snapshotId,
     chainId,
     block: BigInt(blockNumber),
+    timestamp: BigInt(timestamp),
     auctioneerSnapshot_id: auctioneerSnapshot.id,
     auctioneerDepositPeriod_id: auctioneerDepositPeriod.id,
     currentTickPrice: currentTick.price,
@@ -242,10 +247,17 @@ export async function refreshAuctionState(
   context: HandlerContext,
   chainId: number,
   blockNumber: number | bigint,
+  timestamp: number | bigint,
   auctioneer: Auctioneer,
 ): Promise<AuctioneerSnapshot> {
   // Create snapshot with fresh contract data
-  const snapshot = await getOrCreateAuctioneerSnapshot(context, chainId, blockNumber, auctioneer);
+  const snapshot = await getOrCreateAuctioneerSnapshot(
+    context,
+    chainId,
+    blockNumber,
+    timestamp,
+    auctioneer,
+  );
 
   return snapshot;
 }
@@ -257,6 +269,7 @@ export async function getOrCreateFacilitySnapshot(
   context: HandlerContext,
   chainId: number,
   blockNumber: number | bigint,
+  timestamp: number | bigint,
   facility: DepositFacility,
 ): Promise<FacilitySnapshot> {
   const snapshotId = getFacilitySnapshotId(chainId, blockNumber, facility.address);
@@ -272,6 +285,7 @@ export async function getOrCreateFacilitySnapshot(
     id: snapshotId,
     chainId,
     block: BigInt(blockNumber),
+    timestamp: BigInt(timestamp),
     facility_id: facility.id,
   };
 
@@ -290,6 +304,7 @@ export async function getOrCreateFacilityAssetSnapshot(
   context: HandlerContext,
   chainId: number,
   blockNumber: number | bigint,
+  timestamp: number | bigint,
   facilitySnapshot: FacilitySnapshot,
   facility: DepositFacility,
   depositAsset: DepositAsset,
@@ -342,6 +357,7 @@ export async function getOrCreateFacilityAssetSnapshot(
     id: snapshotId,
     chainId,
     block: BigInt(blockNumber),
+    timestamp: BigInt(timestamp),
     facilitySnapshot_id: facilitySnapshot.id,
     facility_id: facility.id,
     depositAsset_id: depositAsset.id,
@@ -441,6 +457,7 @@ export async function updateFacilityAssetDeposited(
   context: HandlerContext,
   chainId: number,
   blockNumber: number | bigint,
+  timestamp: number | bigint,
   facility: DepositFacility,
   depositAsset: DepositAsset,
   delta: bigint,
@@ -450,6 +467,7 @@ export async function updateFacilityAssetDeposited(
     context,
     chainId,
     blockNumber,
+    timestamp,
     facility,
   );
 
@@ -458,6 +476,7 @@ export async function updateFacilityAssetDeposited(
     context,
     chainId,
     blockNumber,
+    timestamp,
     facilitySnapshot,
     facility,
     depositAsset,
@@ -488,6 +507,7 @@ export async function updateFacilityAssetPendingRedemption(
   context: HandlerContext,
   chainId: number,
   blockNumber: number | bigint,
+  timestamp: number | bigint,
   facility: DepositFacility,
   depositAsset: DepositAsset,
   delta: bigint,
@@ -497,6 +517,7 @@ export async function updateFacilityAssetPendingRedemption(
     context,
     chainId,
     blockNumber,
+    timestamp,
     facility,
   );
 
@@ -505,6 +526,7 @@ export async function updateFacilityAssetPendingRedemption(
     context,
     chainId,
     blockNumber,
+    timestamp,
     facilitySnapshot,
     facility,
     depositAsset,
@@ -530,6 +552,7 @@ export async function updateFacilityAssetBorrowedAmount(
   context: HandlerContext,
   chainId: number,
   blockNumber: number | bigint,
+  timestamp: number | bigint,
   facility: DepositFacility,
   depositAsset: DepositAsset,
   delta: bigint,
@@ -539,6 +562,7 @@ export async function updateFacilityAssetBorrowedAmount(
     context,
     chainId,
     blockNumber,
+    timestamp,
     facility,
   );
 
@@ -547,6 +571,7 @@ export async function updateFacilityAssetBorrowedAmount(
     context,
     chainId,
     blockNumber,
+    timestamp,
     facilitySnapshot,
     facility,
     depositAsset,

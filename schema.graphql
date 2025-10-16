@@ -746,7 +746,7 @@ type AuctioneerSnapshot {
   id: ID!
   chainId: Int! @index
   block: BigInt! @index
-  # timestamp: BigInt! @index
+  timestamp: BigInt! @index
   auctioneer: Auctioneer!
 
   # Day state from getDayState()
@@ -771,7 +771,7 @@ type AuctioneerDepositPeriodSnapshot {
   id: ID!
   chainId: Int! @index
   block: BigInt! @index
-  # timestamp: BigInt! @index
+  timestamp: BigInt! @index
 
   auctioneerSnapshot: AuctioneerSnapshot!
   auctioneerDepositPeriod: AuctioneerDepositPeriod!
@@ -787,6 +787,7 @@ type FacilitySnapshot {
   id: ID! # chainId_blockNumber_facilityAddress
   chainId: Int! @index
   block: BigInt! @index
+  timestamp: BigInt! @index
   facility: DepositFacility!
 
   # Derived relationship to asset-specific snapshots
@@ -797,6 +798,7 @@ type FacilityAssetSnapshot {
   id: ID! # chainId_blockNumber_facilityAddress_assetAddress
   chainId: Int! @index
   block: BigInt! @index
+  timestamp: BigInt! @index
   facilitySnapshot: FacilitySnapshot!
   facility: DepositFacility!
   depositAsset: DepositAsset!

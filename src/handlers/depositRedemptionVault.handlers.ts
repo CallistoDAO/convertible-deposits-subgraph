@@ -276,6 +276,7 @@ DepositRedemptionVault.LoanCreated.handler(async ({ event, context }) => {
     context,
     event.chainId,
     event.block.number,
+    event.block.timestamp,
     facility,
     depositAsset,
     event.params.amount, // Positive for new loan
@@ -285,6 +286,7 @@ DepositRedemptionVault.LoanCreated.handler(async ({ event, context }) => {
     context,
     event.chainId,
     event.block.number,
+    event.block.timestamp,
     facility,
     depositAsset,
     -event.params.amount, // Negative for new loan
@@ -350,6 +352,7 @@ DepositRedemptionVault.LoanDefaulted.handler(async ({ event, context }) => {
     context,
     event.chainId,
     event.block.number,
+    event.block.timestamp,
     facility,
     depositAsset,
     -event.params.principal, // Negative for defaulted loan
@@ -468,6 +471,7 @@ DepositRedemptionVault.LoanRepaid.handler(async ({ event, context }) => {
       context,
       event.chainId,
       event.block.number,
+      event.block.timestamp,
       facility,
       depositAsset,
       -amountRepaid, // Negative for loan repayment
@@ -477,6 +481,7 @@ DepositRedemptionVault.LoanRepaid.handler(async ({ event, context }) => {
       context,
       event.chainId,
       event.block.number,
+      event.block.timestamp,
       facility,
       depositAsset,
       amountRepaid, // Positive for loan repayment
@@ -570,6 +575,7 @@ DepositRedemptionVault.RedemptionCancelled.handler(async ({ event, context }) =>
     context,
     event.chainId,
     event.block.number,
+    event.block.timestamp,
     facility,
     depositAsset,
     -redemption.amount, // Negative for cancelled redemption (use the old amount before update)
@@ -627,6 +633,7 @@ DepositRedemptionVault.RedemptionFinished.handler(async ({ event, context }) => 
     context,
     event.chainId,
     event.block.number,
+    event.block.timestamp,
     facility,
     depositAsset,
     -event.params.amount, // Negative for completed redemption
@@ -636,6 +643,7 @@ DepositRedemptionVault.RedemptionFinished.handler(async ({ event, context }) => 
     context,
     event.chainId,
     event.block.number,
+    event.block.timestamp,
     facility,
     depositAsset,
     -event.params.amount, // Negative for completed redemption
@@ -700,6 +708,7 @@ DepositRedemptionVault.RedemptionStarted.handler(async ({ event, context }) => {
     context,
     event.chainId,
     event.block.number,
+    event.block.timestamp,
     facility,
     depositAsset,
     event.params.amount, // Positive for new redemption

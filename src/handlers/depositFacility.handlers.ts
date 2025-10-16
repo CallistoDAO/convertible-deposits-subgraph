@@ -225,12 +225,14 @@ ConvertibleDepositFacility.ClaimedYield.handler(async ({ event, context }) => {
     context,
     event.chainId,
     event.block.number,
+    event.block.timestamp,
     facility,
   );
   await getOrCreateFacilityAssetSnapshot(
     context,
     event.chainId,
     event.block.number,
+    event.block.timestamp,
     facilitySnapshot,
     facility,
     depositAsset,
@@ -340,6 +342,7 @@ ConvertibleDepositFacility.ConvertedDeposit.handler(async ({ event, context }) =
     context,
     event.chainId,
     event.block.number,
+    event.block.timestamp,
     facility,
     depositAsset,
     -event.params.depositAmount, // Negative for withdrawal
@@ -416,6 +419,7 @@ ConvertibleDepositFacility.CreatedDeposit.handler(async ({ event, context }) => 
     context,
     event.chainId,
     event.block.number,
+    event.block.timestamp,
     facility,
     depositAsset,
     event.params.depositAmount,
@@ -575,6 +579,7 @@ ConvertibleDepositFacility.Reclaimed.handler(async ({ event, context }) => {
     context,
     event.chainId,
     event.block.number,
+    event.block.timestamp,
     facility,
     depositAsset,
     -event.params.reclaimedAmount, // Negative for withdrawal
