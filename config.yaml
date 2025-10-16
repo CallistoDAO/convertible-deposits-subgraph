@@ -56,6 +56,13 @@ networks:
     - event: RedemptionCancelled(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount, uint256 remainingAmount)
     - event: RedemptionFinished(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount)
     - event: RedemptionStarted(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount, address facility)
+  # Dummy entry for block handler to be able to run
+  - name: BlockHandler
+    address:
+    - 0x1234567890123456789012345678901234567890
+    handler: src/handlers/block.handlers.ts
+    events:
+    - event: Block(uint256 indexed blockNumber, uint256 indexed blockTimestamp, address indexed author)
 unordered_multichain_mode: true
 preload_handlers: true
 field_selection:
