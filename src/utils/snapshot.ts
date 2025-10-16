@@ -1,5 +1,6 @@
 import type { contract } from "generated/src/ConfigYAML.gen";
 import { getGeneratedByChainId } from "generated/src/ConfigYAML.gen";
+import type { Hex } from "viem";
 import { buildEntityId } from "./ids";
 
 /**
@@ -15,7 +16,7 @@ export function getLatestSnapshotId(chainId: number): string {
 export function getAuctioneerSnapshotId(
   chainId: number,
   blockNumber: number | bigint,
-  auctioneerAddress: string,
+  auctioneerAddress: Hex,
 ): string {
   return buildEntityId([chainId, blockNumber, auctioneerAddress.toLowerCase()]);
 }
@@ -23,8 +24,8 @@ export function getAuctioneerSnapshotId(
 export function getAuctioneerDepositPeriodSnapshotId(
   chainId: number,
   blockNumber: number | bigint,
-  auctioneerAddress: string,
-  depositAssetAddress: string,
+  auctioneerAddress: Hex,
+  depositAssetAddress: Hex,
   periodMonths: number,
 ): string {
   return buildEntityId([
@@ -42,7 +43,7 @@ export function getAuctioneerDepositPeriodSnapshotId(
 export function getDepositFacilitySnapshotId(
   chainId: number,
   blockNumber: number | bigint,
-  facilityAddress: string,
+  facilityAddress: Hex,
 ): string {
   return buildEntityId([chainId, blockNumber, facilityAddress.toLowerCase()]);
 }
@@ -53,8 +54,8 @@ export function getDepositFacilitySnapshotId(
 export function getDepositFacilityAssetSnapshotId(
   chainId: number,
   blockNumber: number | bigint,
-  facilityAddress: string,
-  assetAddress: string,
+  facilityAddress: Hex,
+  assetAddress: Hex,
 ): string {
   return buildEntityId([
     chainId,
@@ -91,25 +92,6 @@ export function getFacilityAddressesFromConfig(chainId: number): string[] {
 
   const contracts = Object.values(config.contracts).reduce((acc: string[], contract: contract) => {
     if (!contract.name.includes("Facility")) {
-      return acc;
-    }
-
-    acc.push(...contract.addresses);
-
-    return acc;
-  }, [] as string[]);
-
-  return contracts;
-}
-
-/**
- * Extract redemption vault addresses from config
- */
-export function getRedemptionVaultAddressesFromConfig(chainId: number): string[] {
-  const config = getGeneratedByChainId(chainId);
-
-  const contracts = Object.values(config.contracts).reduce((acc: string[], contract: contract) => {
-    if (!contract.name.includes("RedemptionVault")) {
       return acc;
     }
 

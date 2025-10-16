@@ -81,7 +81,7 @@ export async function getOrCreateAuctioneerSnapshot(
   timestamp: number | bigint,
   auctioneer: Auctioneer,
 ): Promise<AuctioneerSnapshot> {
-  const snapshotId = getAuctioneerSnapshotId(chainId, blockNumber, auctioneer.address);
+  const snapshotId = getAuctioneerSnapshotId(chainId, blockNumber, auctioneer.address as Hex);
 
   // Check if snapshot already exists
   const existingSnapshot = await context.AuctioneerSnapshot.get(snapshotId);
@@ -175,8 +175,8 @@ export async function getOrCreateAuctioneerDepositPeriodSnapshot(
   const snapshotId = getAuctioneerDepositPeriodSnapshotId(
     chainId,
     blockNumber,
-    auctioneer.address,
-    asset.address,
+    auctioneer.address as Hex,
+    asset.address as Hex,
     depositAssetPeriod.periodMonths,
   );
 
@@ -272,7 +272,7 @@ export async function getOrCreateDepositFacilitySnapshot(
   timestamp: number | bigint,
   facility: DepositFacility,
 ): Promise<DepositFacilitySnapshot> {
-  const snapshotId = getDepositFacilitySnapshotId(chainId, blockNumber, facility.address);
+  const snapshotId = getDepositFacilitySnapshotId(chainId, blockNumber, facility.address as Hex);
 
   // Check if snapshot already exists
   const existingSnapshot = await context.DepositFacilitySnapshot.get(snapshotId);
@@ -288,8 +288,25 @@ export async function getOrCreateDepositFacilitySnapshot(
     timestamp: BigInt(timestamp),
     facility_id: facility.id,
   };
-
   context.DepositFacilitySnapshot.set(snapshot);
+
+  // Create snapshot for each enabled deposit asset
+  const allDepositFacilityAssets = await context.DepositFacilityAsset.getWhere.chainId.eq(chainId);
+  const depositFacilityAssets = allDepositFacilityAssets.filter(
+    (depositFacilityAsset) => depositFacilityAsset.facility_id === facility.id,
+  );
+  for (const depositFacilityAsset of depositFacilityAssets) {
+    const depositAsset = await getDepositAsset(context, depositFacilityAsset.depositAsset_id);
+    await getOrCreateDepositFacilityAssetSnapshot(
+      context,
+      chainId,
+      blockNumber,
+      timestamp,
+      snapshot,
+      facility,
+      depositAsset,
+    );
+  }
 
   // Update LatestSnapshot
   await updateLatestSnapshotFacilities(context, chainId, facility.address as Hex, snapshotId);
@@ -313,8 +330,8 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
   const snapshotId = getDepositFacilityAssetSnapshotId(
     chainId,
     blockNumber,
-    facility.address,
-    asset.address,
+    facility.address as Hex,
+    asset.address as Hex,
   );
 
   // Check if snapshot already exists
@@ -370,7 +387,6 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
     claimableYield,
     claimableYieldDecimal: toDecimal(claimableYield, assetDecimals),
   };
-
   context.DepositFacilityAssetSnapshot.set(snapshot);
 
   // Update LatestSnapshot to include this new facility asset snapshot
