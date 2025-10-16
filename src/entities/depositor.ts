@@ -1,11 +1,12 @@
 import type { Depositor } from "generated";
 import type { HandlerContext } from "generated/src/Types";
+import type { Hex } from "viem";
 import { getAddressId } from "../utils/ids";
 
 export async function getOrCreateDepositor(
   context: HandlerContext,
   chainId: number,
-  address: string,
+  address: Hex,
 ): Promise<Depositor> {
   const id = getAddressId(chainId, address);
   const existing = await context.Depositor.get(id);
@@ -16,5 +17,6 @@ export async function getOrCreateDepositor(
     address: address.toLowerCase(),
   };
   context.Depositor.set(created);
+
   return created;
 }

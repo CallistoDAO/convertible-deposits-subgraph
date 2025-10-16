@@ -1,7 +1,10 @@
 import { onBlock } from "generated";
-import { getOrCreateAuctioneerSnapshot } from "../entities/snapshot";
+import { getOrCreateAuctioneerSnapshot, getOrCreateFacilitySnapshot } from "../entities/snapshot";
 import { getAddressId } from "../utils/ids";
-import { getAuctioneerAddressesFromConfig } from "../utils/snapshot";
+import {
+  getAuctioneerAddressesFromConfig,
+  getFacilityAddressesFromConfig,
+} from "../utils/snapshot";
 
 // TODO add chain definition for mainnet
 
@@ -15,17 +18,19 @@ onBlock(
     context.log.info(`Processing block ${block.number} on chain ${block.chainId}`);
 
     const auctioneerAddresses = getAuctioneerAddressesFromConfig(block.chainId);
-
     for (const address of auctioneerAddresses) {
       const auctioneer = await context.Auctioneer.get(getAddressId(block.chainId, address));
-
       if (!auctioneer || !auctioneer.enabled) continue;
 
       await getOrCreateAuctioneerSnapshot(context, block.chainId, block.number, auctioneer);
     }
 
-    // TODO facility
+    const facilityAddresses = getFacilityAddressesFromConfig(block.chainId);
+    for (const address of facilityAddresses) {
+      const facility = await context.DepositFacility.get(getAddressId(block.chainId, address));
+      if (!facility || !facility.enabled) continue;
 
-    // TODO redemption vault
+      await getOrCreateFacilitySnapshot(context, block.chainId, block.number, facility);
+    }
   },
 );

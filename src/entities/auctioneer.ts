@@ -1,5 +1,6 @@
 import type { Auctioneer, AuctioneerDepositPeriod } from "generated";
 import type { HandlerContext } from "generated/src/Types";
+import type { Hex } from "viem";
 import {
   fetchAuctioneerDepositAsset,
   fetchAuctioneerTickStep,
@@ -14,7 +15,7 @@ export async function getOrCreateAuctioneerDepositPeriod(
   context: HandlerContext,
   chainId: number,
   auctioneer: Auctioneer,
-  assetAddress: string,
+  assetAddress: Hex,
   periodMonths: number,
 ): Promise<AuctioneerDepositPeriod> {
   const id = buildEntityId([chainId, auctioneer.address, assetAddress, periodMonths]);
@@ -43,7 +44,7 @@ export async function getOrCreateAuctioneerDepositPeriod(
 export async function getOrCreateAuctioneer(
   context: HandlerContext,
   chainId: number,
-  address: string,
+  address: Hex,
 ): Promise<Auctioneer> {
   const id = getAddressId(chainId, address);
   const existing = await context.Auctioneer.get(id);
@@ -51,10 +52,10 @@ export async function getOrCreateAuctioneer(
 
   const contractVersion = await context.effect(fetchAuctioneerVersion, { chainId, address });
   const trackingPeriod = await context.effect(fetchAuctioneerTrackingPeriod, { chainId, address });
-  const depositAssetAddress = await context.effect(fetchAuctioneerDepositAsset, {
+  const depositAssetAddress = (await context.effect(fetchAuctioneerDepositAsset, {
     chainId,
     address,
-  });
+  })) as Hex;
   const depositAsset = await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
   const tickStep = await context.effect(fetchAuctioneerTickStep, { chainId, address });
 
@@ -71,6 +72,7 @@ export async function getOrCreateAuctioneer(
     tickStepDecimal: toBpsDecimal(tickStep),
   };
   context.Auctioneer.set(created);
+
   return created;
 }
 

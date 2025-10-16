@@ -18,13 +18,14 @@ import {
   type DepositRedemptionVault_RedemptionFinished,
   type DepositRedemptionVault_RedemptionStarted,
 } from "generated";
+import type { Hex } from "viem";
 import {
   getAsset,
   getDepositAsset,
   getDepositAssetPeriod,
   getDepositAssetPeriodDecimals,
 } from "../entities/asset";
-import { getOrCreateDepositFacility } from "../entities/depositFacility";
+import { getDepositFacility, getOrCreateDepositFacility } from "../entities/depositFacility";
 import { updatePositionFromContract } from "../entities/position";
 import { getOrCreateRedemption, getRedemption } from "../entities/redemption";
 import { getOrCreateRedemptionLoan, getRedemptionLoan } from "../entities/redemptionLoan";
@@ -32,6 +33,11 @@ import {
   getOrCreateRedemptionVault,
   getOrCreateRedemptionVaultAssetConfiguration,
 } from "../entities/redemptionVault";
+import {
+  updateFacilityAssetBorrowedAmount,
+  updateFacilityAssetDeposited,
+  updateFacilityAssetPendingRedemption,
+} from "../entities/snapshot";
 import { toBpsDecimal, toDecimal } from "../utils/decimal";
 import { getBlockId } from "../utils/ids";
 
@@ -42,9 +48,9 @@ DepositRedemptionVault.AnnualInterestRateSet.handler(async ({ event, context }) 
   const assetConfiguration = await getOrCreateRedemptionVaultAssetConfiguration(
     context,
     event.chainId,
-    event.srcAddress,
-    event.params.facility,
-    event.params.asset,
+    event.srcAddress as Hex,
+    event.params.facility as Hex,
+    event.params.asset as Hex,
   );
 
   // Record event
@@ -76,7 +82,7 @@ DepositRedemptionVault.ClaimDefaultRewardPercentageSet.handler(async ({ event, c
   const redemptionVault = await getOrCreateRedemptionVault(
     context,
     event.chainId,
-    event.srcAddress,
+    event.srcAddress as Hex,
   );
 
   // Record event
@@ -108,7 +114,7 @@ DepositRedemptionVault.Disabled.handler(async ({ event, context }) => {
   const redemptionVault = await getOrCreateRedemptionVault(
     context,
     event.chainId,
-    event.srcAddress,
+    event.srcAddress as Hex,
   );
 
   // Record event
@@ -137,7 +143,7 @@ DepositRedemptionVault.Enabled.handler(async ({ event, context }) => {
   const redemptionVault = await getOrCreateRedemptionVault(
     context,
     event.chainId,
-    event.srcAddress,
+    event.srcAddress as Hex,
   );
 
   // Record event
@@ -166,9 +172,13 @@ DepositRedemptionVault.FacilityAuthorized.handler(async ({ event, context }) => 
   const redemptionVault = await getOrCreateRedemptionVault(
     context,
     event.chainId,
-    event.srcAddress,
+    event.srcAddress as Hex,
   );
-  const facility = await getOrCreateDepositFacility(context, event.chainId, event.params.facility);
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.params.facility as Hex,
+  );
 
   // Record event
   const entity: DepositRedemptionVault_FacilityAuthorized = {
@@ -190,9 +200,13 @@ DepositRedemptionVault.FacilityDeauthorized.handler(async ({ event, context }) =
   const redemptionVault = await getOrCreateRedemptionVault(
     context,
     event.chainId,
-    event.srcAddress,
+    event.srcAddress as Hex,
   );
-  const facility = await getOrCreateDepositFacility(context, event.chainId, event.params.facility);
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.params.facility as Hex,
+  );
 
   // Record event
   const entity: DepositRedemptionVault_FacilityDeauthorized = {
@@ -214,10 +228,14 @@ DepositRedemptionVault.LoanCreated.handler(async ({ event, context }) => {
   const redemption = await getRedemption(
     context,
     event.chainId,
-    event.params.user,
+    event.params.user as Hex,
     Number(event.params.redemptionId),
   );
-  const facility = await getOrCreateDepositFacility(context, event.chainId, event.params.facility);
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.params.facility as Hex,
+  );
   const depositAssetPeriod = await getDepositAssetPeriod(context, redemption.depositAssetPeriod_id);
   const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
   const asset = await getAsset(context, depositAsset.asset_id);
@@ -226,11 +244,11 @@ DepositRedemptionVault.LoanCreated.handler(async ({ event, context }) => {
   const redemptionLoan = await getOrCreateRedemptionLoan(
     context,
     event.chainId,
-    event.srcAddress,
-    facility.address,
-    asset.address,
+    event.srcAddress as Hex,
+    facility.address as Hex,
+    asset.address as Hex,
     depositAssetPeriod.periodMonths,
-    event.params.user,
+    event.params.user as Hex,
     Number(event.params.redemptionId),
     Number(event.block.timestamp),
   );
@@ -252,6 +270,25 @@ DepositRedemptionVault.LoanCreated.handler(async ({ event, context }) => {
   if (redemption.position_id) {
     await updatePositionFromContract(context, redemption.position_id, asset.decimals);
   }
+
+  // Update facility asset snapshot with new loan (positive delta for borrowed amount)
+  await updateFacilityAssetBorrowedAmount(
+    context,
+    event.chainId,
+    event.block.number,
+    facility,
+    depositAsset,
+    event.params.amount, // Positive for new loan
+  );
+  // Reduce asset deposits
+  await updateFacilityAssetDeposited(
+    context,
+    event.chainId,
+    event.block.number,
+    facility,
+    depositAsset,
+    -event.params.amount, // Negative for new loan
+  );
 });
 
 DepositRedemptionVault.LoanDefaulted.handler(async ({ event, context }) => {
@@ -261,13 +298,13 @@ DepositRedemptionVault.LoanDefaulted.handler(async ({ event, context }) => {
   const redemption = await getRedemption(
     context,
     event.chainId,
-    event.params.user,
+    event.params.user as Hex,
     Number(event.params.redemptionId),
   );
   const redemptionLoan = await getRedemptionLoan(
     context,
     event.chainId,
-    event.params.user,
+    event.params.user as Hex,
     Number(event.params.redemptionId),
   );
   const assetDecimals = await getDepositAssetPeriodDecimals(
@@ -303,6 +340,21 @@ DepositRedemptionVault.LoanDefaulted.handler(async ({ event, context }) => {
   if (redemption.position_id) {
     await updatePositionFromContract(context, redemption.position_id, assetDecimals);
   }
+
+  // Update facility asset snapshot with defaulted loan (negative delta for reduction in borrowed amount)
+  const facility = await getDepositFacility(context, redemption.facility_id);
+  const depositAssetPeriod = await getDepositAssetPeriod(context, redemption.depositAssetPeriod_id);
+  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
+  // Reduce loan amount
+  await updateFacilityAssetBorrowedAmount(
+    context,
+    event.chainId,
+    event.block.number,
+    facility,
+    depositAsset,
+    -event.params.principal, // Negative for defaulted loan
+  );
+  // No increase in deposits, since it is repossessed by the protocol
 });
 
 DepositRedemptionVault.LoanExtended.handler(async ({ event, context }) => {
@@ -312,13 +364,13 @@ DepositRedemptionVault.LoanExtended.handler(async ({ event, context }) => {
   const redemption = await getRedemption(
     context,
     event.chainId,
-    event.params.user,
+    event.params.user as Hex,
     Number(event.params.redemptionId),
   );
   const redemptionLoan = await getRedemptionLoan(
     context,
     event.chainId,
-    event.params.user,
+    event.params.user as Hex,
     Number(event.params.redemptionId),
   );
   const assetDecimals = await getDepositAssetPeriodDecimals(
@@ -358,13 +410,13 @@ DepositRedemptionVault.LoanRepaid.handler(async ({ event, context }) => {
   const redemption = await getRedemption(
     context,
     event.chainId,
-    event.params.user,
+    event.params.user as Hex,
     Number(event.params.redemptionId),
   );
   const redemptionLoan = await getRedemptionLoan(
     context,
     event.chainId,
-    event.params.user,
+    event.params.user as Hex,
     Number(event.params.redemptionId),
   );
   const assetDecimals = await getDepositAssetPeriodDecimals(
@@ -402,6 +454,34 @@ DepositRedemptionVault.LoanRepaid.handler(async ({ event, context }) => {
   if (redemption.position_id) {
     await updatePositionFromContract(context, redemption.position_id, assetDecimals);
   }
+
+  // Update facility asset snapshot with repaid loan (negative delta for reduction in borrowed amount)
+  const facility = await getDepositFacility(context, redemption.facility_id);
+  const depositAssetPeriod = await getDepositAssetPeriod(context, redemption.depositAssetPeriod_id);
+  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
+  // Calculate the amount repaid (old principal - new principal)
+  const amountRepaid = redemptionLoan.principal - event.params.principal;
+
+  if (amountRepaid > BigInt(0)) {
+    // Reduction in borrowed amount
+    await updateFacilityAssetBorrowedAmount(
+      context,
+      event.chainId,
+      event.block.number,
+      facility,
+      depositAsset,
+      -amountRepaid, // Negative for loan repayment
+    );
+    // Increase in deposited assets
+    await updateFacilityAssetDeposited(
+      context,
+      event.chainId,
+      event.block.number,
+      facility,
+      depositAsset,
+      amountRepaid, // Positive for loan repayment
+    );
+  }
 });
 
 DepositRedemptionVault.MaxBorrowPercentageSet.handler(async ({ event, context }) => {
@@ -411,9 +491,9 @@ DepositRedemptionVault.MaxBorrowPercentageSet.handler(async ({ event, context })
   const assetConfiguration = await getOrCreateRedemptionVaultAssetConfiguration(
     context,
     event.chainId,
-    event.srcAddress,
-    event.params.facility,
-    event.params.asset,
+    event.srcAddress as Hex,
+    event.params.facility as Hex,
+    event.params.asset as Hex,
   );
 
   // Record event
@@ -445,7 +525,7 @@ DepositRedemptionVault.RedemptionCancelled.handler(async ({ event, context }) =>
   const redemption = await getRedemption(
     context,
     event.chainId,
-    event.params.user,
+    event.params.user as Hex,
     Number(event.params.redemptionId),
   );
   const assetDecimals = await getDepositAssetPeriodDecimals(
@@ -480,6 +560,21 @@ DepositRedemptionVault.RedemptionCancelled.handler(async ({ event, context }) =>
   if (redemption.position_id) {
     await updatePositionFromContract(context, redemption.position_id, assetDecimals);
   }
+
+  // Update facility asset snapshot with cancelled redemption (negative delta)
+  const facility = await getDepositFacility(context, redemption.facility_id);
+  const depositAssetPeriod = await getDepositAssetPeriod(context, redemption.depositAssetPeriod_id);
+  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
+  // Reduce pending redemption amount
+  await updateFacilityAssetPendingRedemption(
+    context,
+    event.chainId,
+    event.block.number,
+    facility,
+    depositAsset,
+    -redemption.amount, // Negative for cancelled redemption (use the old amount before update)
+  );
+  // No increase in deposits, since assets are still in the DepositManager
 });
 
 DepositRedemptionVault.RedemptionFinished.handler(async ({ event, context }) => {
@@ -489,7 +584,7 @@ DepositRedemptionVault.RedemptionFinished.handler(async ({ event, context }) => 
   const redemption = await getRedemption(
     context,
     event.chainId,
-    event.params.user,
+    event.params.user as Hex,
     Number(event.params.redemptionId),
   );
   const assetDecimals = await getDepositAssetPeriodDecimals(
@@ -522,6 +617,29 @@ DepositRedemptionVault.RedemptionFinished.handler(async ({ event, context }) => 
   if (redemption.position_id) {
     await updatePositionFromContract(context, redemption.position_id, assetDecimals);
   }
+
+  // Update facility asset snapshot with completed redemption (negative delta)
+  const facility = await getDepositFacility(context, redemption.facility_id);
+  const depositAssetPeriod = await getDepositAssetPeriod(context, redemption.depositAssetPeriod_id);
+  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
+  // Reduction in pending redemption amount
+  await updateFacilityAssetPendingRedemption(
+    context,
+    event.chainId,
+    event.block.number,
+    facility,
+    depositAsset,
+    -event.params.amount, // Negative for completed redemption
+  );
+  // Reduction in deposited assets
+  await updateFacilityAssetDeposited(
+    context,
+    event.chainId,
+    event.block.number,
+    facility,
+    depositAsset,
+    -event.params.amount, // Negative for completed redemption
+  );
 });
 
 DepositRedemptionVault.RedemptionStarted.handler(async ({ event, context }) => {
@@ -531,11 +649,11 @@ DepositRedemptionVault.RedemptionStarted.handler(async ({ event, context }) => {
   const redemption = await getOrCreateRedemption(
     context,
     event.chainId,
-    event.srcAddress,
-    event.params.facility,
-    event.params.depositToken,
+    event.srcAddress as Hex,
+    event.params.facility as Hex,
+    event.params.depositToken as Hex,
     Number(event.params.depositPeriod),
-    event.params.user,
+    event.params.user as Hex,
     Number(event.params.redemptionId),
   );
   const assetDecimals = await getDepositAssetPeriodDecimals(
@@ -568,4 +686,23 @@ DepositRedemptionVault.RedemptionStarted.handler(async ({ event, context }) => {
   if (redemption.position_id) {
     await updatePositionFromContract(context, redemption.position_id, assetDecimals);
   }
+
+  // Update facility asset snapshot with pending redemption
+  const facility = await getOrCreateDepositFacility(
+    context,
+    event.chainId,
+    event.params.facility as Hex,
+  );
+  const depositAssetPeriod = await getDepositAssetPeriod(context, redemption.depositAssetPeriod_id);
+  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
+  // Increase in pending redemption amount
+  await updateFacilityAssetPendingRedemption(
+    context,
+    event.chainId,
+    event.block.number,
+    facility,
+    depositAsset,
+    event.params.amount, // Positive for new redemption
+  );
+  // No increase in deposits, since assets are still in the DepositManager
 });

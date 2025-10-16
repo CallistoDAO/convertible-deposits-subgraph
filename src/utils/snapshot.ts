@@ -43,29 +43,23 @@ export function getFacilitySnapshotId(
   chainId: number,
   blockNumber: number | bigint,
   facilityAddress: string,
+): string {
+  return buildEntityId([chainId, blockNumber, facilityAddress.toLowerCase()]);
+}
+
+/**
+ * Get the ID for a FacilityAssetSnapshot entity
+ */
+export function getFacilityAssetSnapshotId(
+  chainId: number,
+  blockNumber: number | bigint,
+  facilityAddress: string,
   assetAddress: string,
 ): string {
   return buildEntityId([
     chainId,
     blockNumber,
     facilityAddress.toLowerCase(),
-    assetAddress.toLowerCase(),
-  ]);
-}
-
-/**
- * Get the ID for a RedemptionVaultSnapshot entity
- */
-export function getRedemptionVaultSnapshotId(
-  chainId: number,
-  blockNumber: number | bigint,
-  vaultAddress: string,
-  assetAddress: string,
-): string {
-  return buildEntityId([
-    chainId,
-    blockNumber,
-    vaultAddress.toLowerCase(),
     assetAddress.toLowerCase(),
   ]);
 }

@@ -1,5 +1,6 @@
 import type { DepositFacility, DepositFacilityAsset, DepositFacilityAssetPeriod } from "generated";
 import type { HandlerContext } from "generated/src/Types";
+import type { Hex } from "viem";
 import {
   fetchDepositFacilityAssetCommittedAmount,
   fetchDepositFacilityAssetPeriodReclaimRate,
@@ -15,7 +16,7 @@ import {
 export async function getOrCreateDepositFacility(
   context: HandlerContext,
   chainId: number,
-  address: string,
+  address: Hex,
 ): Promise<DepositFacility> {
   const id = getAddressId(chainId, address);
   const existing = await context.DepositFacility.get(id);
@@ -31,11 +32,21 @@ export async function getOrCreateDepositFacility(
   return created;
 }
 
+export async function getDepositFacility(
+  context: HandlerContext,
+  recordId: string,
+): Promise<DepositFacility> {
+  const existing = await context.DepositFacility.get(recordId);
+  if (!existing) throw new Error(`Deposit facility not found: ${recordId}`);
+
+  return existing;
+}
+
 export async function getOrCreateDepositFacilityAsset(
   context: HandlerContext,
   chainId: number,
-  facilityAddress: string,
-  depositAssetAddress: string,
+  facilityAddress: Hex,
+  depositAssetAddress: Hex,
 ): Promise<DepositFacilityAsset> {
   const id = buildEntityId([chainId, facilityAddress, depositAssetAddress]);
   const existing = await context.DepositFacilityAsset.get(id);
@@ -66,8 +77,8 @@ export async function getOrCreateDepositFacilityAsset(
 export async function getOrCreateDepositFacilityAssetPeriod(
   context: HandlerContext,
   chainId: number,
-  facilityAddress: string,
-  depositAssetAddress: string,
+  facilityAddress: Hex,
+  depositAssetAddress: Hex,
   depositAssetPeriodMonths: number,
 ): Promise<DepositFacilityAssetPeriod> {
   const id = buildEntityId([
@@ -109,5 +120,6 @@ export async function getOrCreateDepositFacilityAssetPeriod(
     reclaimRateDecimal: toBpsDecimal(reclaimRate),
   };
   context.DepositFacilityAssetPeriod.set(created);
+
   return created;
 }

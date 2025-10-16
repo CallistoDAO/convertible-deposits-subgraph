@@ -1,5 +1,6 @@
 import type { ReceiptToken } from "generated";
 import type { HandlerContext } from "generated/src/Types";
+import type { Hex } from "viem";
 import { fetchReceiptTokenId, fetchReceiptTokenManager } from "../contracts/depositManager";
 import { getReceiptTokenId } from "../utils/ids";
 import { getOrCreateDepositAssetPeriod } from "./asset";
@@ -8,8 +9,8 @@ import { getOrCreateDepositFacility } from "./depositFacility";
 export async function getOrCreateReceiptToken(
   context: HandlerContext,
   chainId: number,
-  facilityAddress: string,
-  depositAssetAddress: string,
+  facilityAddress: Hex,
+  depositAssetAddress: Hex,
   depositAssetPeriodMonths: number,
 ): Promise<ReceiptToken> {
   // Look up the ReceiptTokenManager address
@@ -45,5 +46,6 @@ export async function getOrCreateReceiptToken(
     depositAssetPeriod_id: depositAssetPeriod.id,
   };
   context.ReceiptToken.set(created);
+
   return created;
 }

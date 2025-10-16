@@ -1,5 +1,6 @@
 import type { RedemptionLoan } from "generated";
 import type { HandlerContext } from "generated/src/Types";
+import type { Hex } from "viem";
 import { fetchLoan } from "../contracts/redemptionVault";
 import { toDecimal } from "../utils/decimal";
 import { buildEntityId } from "../utils/ids";
@@ -9,11 +10,11 @@ import { getOrCreateRedemption } from "./redemption";
 export async function getOrCreateRedemptionLoan(
   context: HandlerContext,
   chainId: number,
-  redemptionVaultAddress: string,
-  facilityAddress: string,
-  depositAssetAddress: string,
+  redemptionVaultAddress: Hex,
+  facilityAddress: Hex,
+  depositAssetAddress: Hex,
   depositAssetPeriodMonths: number,
-  userAddress: string,
+  userAddress: Hex,
   redemptionId: number,
   createdAt: number,
 ): Promise<RedemptionLoan> {
@@ -65,7 +66,7 @@ export async function getOrCreateRedemptionLoan(
 export async function getRedemptionLoan(
   context: HandlerContext,
   chainId: number,
-  userAddress: string,
+  userAddress: Hex,
   redemptionId: number,
 ): Promise<RedemptionLoan> {
   const id = buildEntityId([chainId, userAddress, redemptionId]);

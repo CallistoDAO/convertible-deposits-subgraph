@@ -1,5 +1,6 @@
 import type { Asset, DepositAsset, DepositAssetPeriod } from "generated";
 import type { HandlerContext } from "generated/src/Types";
+import type { Hex } from "viem";
 import { fetchAssetDecimals, fetchAssetName, fetchAssetSymbol } from "../contracts/asset";
 import { buildEntityId, getAddressId } from "../utils/ids";
 
@@ -14,7 +15,7 @@ import { buildEntityId, getAddressId } from "../utils/ids";
 export async function getOrCreateAsset(
   context: HandlerContext,
   chainId: number,
-  address: string,
+  address: Hex,
 ): Promise<Asset> {
   const id = getAddressId(chainId, address);
   const existing = await context.Asset.get(id);
@@ -55,7 +56,7 @@ export async function getAsset(context: HandlerContext, assetId: string): Promis
 export async function getAssetDecimals(
   context: HandlerContext,
   chainId: number,
-  assetAddress: string,
+  assetAddress: Hex,
 ): Promise<number> {
   const asset = await getAsset(context, getAddressId(chainId, assetAddress));
   return asset.decimals;
@@ -72,7 +73,7 @@ export async function getAssetDecimals(
 export async function getOrCreateDepositAsset(
   context: HandlerContext,
   chainId: number,
-  assetAddress: string,
+  assetAddress: Hex,
 ): Promise<DepositAsset> {
   const id = getAddressId(chainId, assetAddress);
   const existing = await context.DepositAsset.get(id);
@@ -131,7 +132,7 @@ export async function getDepositAssetDecimals(
 export async function getOrCreateDepositAssetPeriod(
   context: HandlerContext,
   chainId: number,
-  depositAssetAddress: string,
+  depositAssetAddress: Hex,
   periodMonths: number,
 ): Promise<DepositAssetPeriod> {
   const id = buildEntityId([chainId, depositAssetAddress, periodMonths]);

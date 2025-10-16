@@ -739,7 +739,7 @@ type LatestSnapshot {
   # Latest snapshot IDs - stored as string arrays (only active ones)
   auctioneerSnapshotIds: [String!]!
   facilitySnapshotIds: [String!]!
-  redemptionVaultSnapshotIds: [String!]!
+  facilityAssetSnapshotIds: [String!]!
 }
 
 type AuctioneerSnapshot {
@@ -784,37 +784,33 @@ type AuctioneerDepositPeriodSnapshot {
 }
 
 type FacilitySnapshot {
-  id: ID!
+  id: ID! # chainId_blockNumber_facilityAddress
   chainId: Int! @index
   block: BigInt! @index
-  # timestamp: BigInt! @index
+  facility: DepositFacility!
+
+  # Derived relationship to asset-specific snapshots
+  assetSnapshots: [FacilityAssetSnapshot!]! @derivedFrom(field: "facilitySnapshot")
+}
+
+type FacilityAssetSnapshot {
+  id: ID! # chainId_blockNumber_facilityAddress_assetAddress
+  chainId: Int! @index
+  block: BigInt! @index
+  facilitySnapshot: FacilitySnapshot!
   facility: DepositFacility!
   depositAsset: DepositAsset!
 
-  # Deposit state - incremental counters (updated on events)
-  uniqueDepositors: Int!
+  # Incremental counters (copied from previous snapshot, adjusted by events)
+  # Includes pending redemption (still in the DepositManager), excludes borrowed amount
   totalDeposited: BigInt!
   totalDepositedDecimal: BigDecimal!
+  pendingRedemption: BigInt!
+  pendingRedemptionDecimal: BigDecimal!
+  borrowedAmount: BigInt!
+  borrowedAmountDecimal: BigDecimal!
 
   # Claimable yield (from contract call)
   claimableYield: BigInt!
   claimableYieldDecimal: BigDecimal!
-}
-
-type RedemptionVaultSnapshot {
-  id: ID!
-  chainId: Int! @index
-  block: BigInt! @index
-  # timestamp: BigInt! @index
-  redemptionVault: DepositRedemptionVault!
-  depositAsset: DepositAsset!
-
-  # Pending redemption (from querying Redemption entities with redeemableAt > current timestamp)
-  totalPendingRedemption: BigInt!
-  totalPendingRedemptionDecimal: BigDecimal!
-
-  # Loan state (from querying RedemptionLoan entities by status)
-  outstandingLoansCount: Int!
-  outstandingLoanPrincipal: BigInt!
-  outstandingLoanPrincipalDecimal: BigDecimal!
 }

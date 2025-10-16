@@ -1,5 +1,6 @@
 import type { ConvertibleDepositPosition } from "generated";
 import type { HandlerContext } from "generated/src/Types";
+import type { Hex } from "viem";
 import { fetchPosition } from "../contracts/position";
 import { toDecimal } from "../utils/decimal";
 import { getPositionId } from "../utils/ids";
@@ -15,12 +16,12 @@ const UINT256_MAX = BigInt(
 export async function getOrCreatePosition(
   context: HandlerContext,
   chainId: number,
-  facilityAddress: string,
-  depositAssetAddress: string,
+  facilityAddress: Hex,
+  depositAssetAddress: Hex,
   depositAssetPeriodMonths: number,
   positionId: bigint,
-  depositorAddress: string,
-  txHash: string,
+  depositorAddress: Hex,
+  txHash: Hex,
   block: bigint,
   timestamp: bigint,
 ): Promise<ConvertibleDepositPosition> {
