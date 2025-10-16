@@ -30,6 +30,8 @@ import { getOrCreatePosition } from "../entities/position";
 import { getOrCreateAuctioneerSnapshot, refreshAuctionState } from "../entities/snapshot";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
 import { getBlockId } from "../utils/ids";
+// Enables the block handler to run
+import "./block.handlers";
 
 ConvertibleDepositAuctioneer.AuctionParametersUpdated.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
