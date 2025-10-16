@@ -25,7 +25,7 @@ import {
   getDepositAssetPeriodDecimals,
 } from "../entities/asset";
 import { getOrCreateDepositFacility } from "../entities/depositFacility";
-import { getPosition } from "../entities/position";
+import { updatePositionFromContract } from "../entities/position";
 import { getOrCreateRedemption, getRedemption } from "../entities/redemption";
 import { getOrCreateRedemptionLoan, getRedemptionLoan } from "../entities/redemptionLoan";
 import {
@@ -247,6 +247,11 @@ DepositRedemptionVault.LoanCreated.handler(async ({ event, context }) => {
     amountDecimal: toDecimal(event.params.amount, asset.decimals),
   };
   context.DepositRedemptionVault_LoanCreated.set(entity);
+
+  // Update position amount
+  if (redemption.position_id) {
+    await updatePositionFromContract(context, redemption.position_id, asset.decimals);
+  }
 });
 
 DepositRedemptionVault.LoanDefaulted.handler(async ({ event, context }) => {
@@ -293,17 +298,32 @@ DepositRedemptionVault.LoanDefaulted.handler(async ({ event, context }) => {
     status: "defaulted",
   };
   context.RedemptionLoan.set(updatedLoan);
+
+  // Update position amount
+  if (redemption.position_id) {
+    await updatePositionFromContract(context, redemption.position_id, assetDecimals);
+  }
 });
 
 DepositRedemptionVault.LoanExtended.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
 
   // Create/fetch records
+  const redemption = await getRedemption(
+    context,
+    event.chainId,
+    event.params.user,
+    Number(event.params.redemptionId),
+  );
   const redemptionLoan = await getRedemptionLoan(
     context,
     event.chainId,
     event.params.user,
     Number(event.params.redemptionId),
+  );
+  const assetDecimals = await getDepositAssetPeriodDecimals(
+    context,
+    redemption.depositAssetPeriod_id,
   );
 
   // Record event
@@ -324,6 +344,11 @@ DepositRedemptionVault.LoanExtended.handler(async ({ event, context }) => {
     dueDate: event.params.newDueDate,
   };
   context.RedemptionLoan.set(updatedLoan);
+
+  // Update position amount
+  if (redemption.position_id) {
+    await updatePositionFromContract(context, redemption.position_id, assetDecimals);
+  }
 });
 
 DepositRedemptionVault.LoanRepaid.handler(async ({ event, context }) => {
@@ -372,6 +397,11 @@ DepositRedemptionVault.LoanRepaid.handler(async ({ event, context }) => {
     interestDecimal: toDecimal(event.params.interest, assetDecimals),
   };
   context.RedemptionLoan.set(updatedLoan);
+
+  // Update position amount
+  if (redemption.position_id) {
+    await updatePositionFromContract(context, redemption.position_id, assetDecimals);
+  }
 });
 
 DepositRedemptionVault.MaxBorrowPercentageSet.handler(async ({ event, context }) => {
@@ -446,17 +476,9 @@ DepositRedemptionVault.RedemptionCancelled.handler(async ({ event, context }) =>
   };
   context.Redemption.set(updatedRedemption);
 
-  // Update position (if applicable)
+  // Update position amount
   if (redemption.position_id) {
-    const position = await getPosition(context, redemption.position_id);
-    const updatedAmount = position.remainingAmount + event.params.amount;
-
-    const updatedPosition = {
-      ...position,
-      remainingAmount: updatedAmount,
-      remainingAmountDecimal: toDecimal(updatedAmount, assetDecimals),
-    };
-    context.ConvertibleDepositPosition.set(updatedPosition);
+    await updatePositionFromContract(context, redemption.position_id, assetDecimals);
   }
 });
 
@@ -496,7 +518,10 @@ DepositRedemptionVault.RedemptionFinished.handler(async ({ event, context }) => 
   };
   context.Redemption.set(updatedRedemption);
 
-  // Position has already been updated in the RedemptionStarted and RedemptionCancelled events
+  // Update position amount
+  if (redemption.position_id) {
+    await updatePositionFromContract(context, redemption.position_id, assetDecimals);
+  }
 });
 
 DepositRedemptionVault.RedemptionStarted.handler(async ({ event, context }) => {
@@ -539,16 +564,8 @@ DepositRedemptionVault.RedemptionStarted.handler(async ({ event, context }) => {
   };
   context.Redemption.set(updatedRedemption);
 
-  // Update position (if applicable)
+  // Update position amount
   if (redemption.position_id) {
-    const position = await getPosition(context, redemption.position_id);
-    const updatedAmount = position.remainingAmount - event.params.amount;
-
-    const updatedPosition = {
-      ...position,
-      remainingAmount: updatedAmount,
-      remainingAmountDecimal: toDecimal(updatedAmount, assetDecimals),
-    };
-    context.ConvertibleDepositPosition.set(updatedPosition);
+    await updatePositionFromContract(context, redemption.position_id, assetDecimals);
   }
 });

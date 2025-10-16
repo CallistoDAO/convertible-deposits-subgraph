@@ -91,3 +91,26 @@ export async function getPosition(
 
   return existing as ConvertibleDepositPosition;
 }
+
+export async function updatePositionFromContract(
+  context: HandlerContext,
+  recordId: string,
+  assetDecimals: number,
+): Promise<void> {
+  const position = await getPosition(context, recordId);
+
+  // Fetch updated position data from contract
+  const contractPosition = await context.effect(fetchPosition, {
+    chainId: position.chainId,
+    positionId: position.positionId,
+  });
+
+  // Update the position with the latest remainingAmount from the contract
+  const updatedPosition: ConvertibleDepositPosition = {
+    ...position,
+    remainingAmount: contractPosition.remainingDeposit,
+    remainingAmountDecimal: toDecimal(contractPosition.remainingDeposit, assetDecimals),
+  };
+
+  context.ConvertibleDepositPosition.set(updatedPosition);
+}
