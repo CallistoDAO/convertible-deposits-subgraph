@@ -28,8 +28,8 @@ import {
 import { getOrCreateDepositor } from "../entities/depositor";
 import { getOrCreatePosition } from "../entities/position";
 import {
-  getOrCreateFacilityAssetSnapshot,
-  getOrCreateFacilitySnapshot,
+  getOrCreateDepositFacilityAssetSnapshot,
+  getOrCreateDepositFacilitySnapshot,
   updateFacilityAssetDeposited,
 } from "../entities/snapshot";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
@@ -221,14 +221,14 @@ ConvertibleDepositFacility.ClaimedYield.handler(async ({ event, context }) => {
     event.srcAddress as Hex,
   );
   const depositAsset = await getDepositAsset(context, facilityAsset.depositAsset_id);
-  const facilitySnapshot = await getOrCreateFacilitySnapshot(
+  const facilitySnapshot = await getOrCreateDepositFacilitySnapshot(
     context,
     event.chainId,
     event.block.number,
     event.block.timestamp,
     facility,
   );
-  await getOrCreateFacilityAssetSnapshot(
+  await getOrCreateDepositFacilityAssetSnapshot(
     context,
     event.chainId,
     event.block.number,

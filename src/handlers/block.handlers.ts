@@ -1,6 +1,9 @@
 import { onBlock } from "generated";
 import { fetchBlockTimestamp } from "../contracts/block";
-import { getOrCreateAuctioneerSnapshot, getOrCreateFacilitySnapshot } from "../entities/snapshot";
+import {
+  getOrCreateAuctioneerSnapshot,
+  getOrCreateDepositFacilitySnapshot,
+} from "../entities/snapshot";
 import { getAddressId } from "../utils/ids";
 import {
   getAuctioneerAddressesFromConfig,
@@ -48,7 +51,7 @@ import {
         const facility = await context.DepositFacility.get(getAddressId(block.chainId, address));
         if (!facility || !facility.enabled) continue;
 
-        await getOrCreateFacilitySnapshot(
+        await getOrCreateDepositFacilitySnapshot(
           context,
           block.chainId,
           block.number,

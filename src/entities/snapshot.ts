@@ -5,8 +5,8 @@ import type {
   AuctioneerSnapshot,
   DepositAsset,
   DepositFacility,
-  FacilityAssetSnapshot,
-  FacilitySnapshot,
+  DepositFacilityAssetSnapshot,
+  DepositFacilitySnapshot,
   LatestSnapshot,
 } from "generated";
 import type { HandlerContext } from "generated/src/Types";
@@ -21,8 +21,8 @@ import { toDecimal, toOhmDecimal } from "../utils/decimal";
 import {
   getAuctioneerDepositPeriodSnapshotId,
   getAuctioneerSnapshotId,
-  getFacilityAssetSnapshotId,
-  getFacilitySnapshotId,
+  getDepositFacilityAssetSnapshotId,
+  getDepositFacilitySnapshotId,
   getLatestSnapshotId,
 } from "../utils/snapshot";
 import { getAsset, getDepositAsset, getDepositAssetDecimals, getDepositAssetPeriod } from "./asset";
@@ -63,8 +63,8 @@ export async function getOrCreateLatestSnapshot(
     id,
     chainId,
     auctioneerSnapshotIds: [],
-    facilitySnapshotIds: [],
-    facilityAssetSnapshotIds: [],
+    depositFacilitySnapshotIds: [],
+    depositFacilityAssetSnapshotIds: [],
   };
 
   context.LatestSnapshot.set(created);
@@ -263,25 +263,25 @@ export async function refreshAuctionState(
 }
 
 /**
- * Get or create a FacilitySnapshot for the given facility
+ * Get or create a DepositFacilitySnapshot for the given facility
  */
-export async function getOrCreateFacilitySnapshot(
+export async function getOrCreateDepositFacilitySnapshot(
   context: HandlerContext,
   chainId: number,
   blockNumber: number | bigint,
   timestamp: number | bigint,
   facility: DepositFacility,
-): Promise<FacilitySnapshot> {
-  const snapshotId = getFacilitySnapshotId(chainId, blockNumber, facility.address);
+): Promise<DepositFacilitySnapshot> {
+  const snapshotId = getDepositFacilitySnapshotId(chainId, blockNumber, facility.address);
 
   // Check if snapshot already exists
-  const existingSnapshot = await context.FacilitySnapshot.get(snapshotId);
+  const existingSnapshot = await context.DepositFacilitySnapshot.get(snapshotId);
   if (existingSnapshot) {
-    return existingSnapshot as FacilitySnapshot;
+    return existingSnapshot as DepositFacilitySnapshot;
   }
 
   // Create new snapshot
-  const snapshot: FacilitySnapshot = {
+  const snapshot: DepositFacilitySnapshot = {
     id: snapshotId,
     chainId,
     block: BigInt(blockNumber),
@@ -289,7 +289,7 @@ export async function getOrCreateFacilitySnapshot(
     facility_id: facility.id,
   };
 
-  context.FacilitySnapshot.set(snapshot);
+  context.DepositFacilitySnapshot.set(snapshot);
 
   // Update LatestSnapshot
   await updateLatestSnapshotFacilities(context, chainId, facility.address as Hex, snapshotId);
@@ -298,19 +298,19 @@ export async function getOrCreateFacilitySnapshot(
 }
 
 /**
- * Get or create a FacilityAssetSnapshot for the given facility and asset
+ * Get or create a DepositFacilityAssetSnapshot for the given facility and asset
  */
-export async function getOrCreateFacilityAssetSnapshot(
+export async function getOrCreateDepositFacilityAssetSnapshot(
   context: HandlerContext,
   chainId: number,
   blockNumber: number | bigint,
   timestamp: number | bigint,
-  facilitySnapshot: FacilitySnapshot,
+  facilitySnapshot: DepositFacilitySnapshot,
   facility: DepositFacility,
   depositAsset: DepositAsset,
-): Promise<FacilityAssetSnapshot> {
+): Promise<DepositFacilityAssetSnapshot> {
   const asset = await getAsset(context, depositAsset.asset_id);
-  const snapshotId = getFacilityAssetSnapshotId(
+  const snapshotId = getDepositFacilityAssetSnapshotId(
     chainId,
     blockNumber,
     facility.address,
@@ -318,14 +318,14 @@ export async function getOrCreateFacilityAssetSnapshot(
   );
 
   // Check if snapshot already exists
-  const existingSnapshot = await context.FacilityAssetSnapshot.get(snapshotId);
+  const existingSnapshot = await context.DepositFacilityAssetSnapshot.get(snapshotId);
   if (existingSnapshot) {
-    return existingSnapshot as FacilityAssetSnapshot;
+    return existingSnapshot as DepositFacilityAssetSnapshot;
   }
 
   // Get the latest snapshot for this facility/asset combo from LatestSnapshot
   const latestSnapshot = await getOrCreateLatestSnapshot(context, chainId);
-  const latestSnapshotId = latestSnapshot.facilityAssetSnapshotIds.find((id) => {
+  const latestSnapshotId = latestSnapshot.depositFacilityAssetSnapshotIds.find((id) => {
     // Extract facility and asset from snapshot ID (format: chainId_blockNumber_facilityAddress_assetAddress)
     const parts = id.split("_");
     const snapshotFacilityAddress = parts[2];
@@ -336,9 +336,9 @@ export async function getOrCreateFacilityAssetSnapshot(
     );
   });
 
-  let previousSnapshot: FacilityAssetSnapshot | null = null;
+  let previousSnapshot: DepositFacilityAssetSnapshot | null = null;
   if (latestSnapshotId) {
-    const snapshot = await context.FacilityAssetSnapshot.get(latestSnapshotId);
+    const snapshot = await context.DepositFacilityAssetSnapshot.get(latestSnapshotId);
     previousSnapshot = snapshot || null;
   }
 
@@ -353,7 +353,7 @@ export async function getOrCreateFacilityAssetSnapshot(
   const assetDecimals = await getDepositAssetDecimals(context, depositAsset.id);
 
   // Create new snapshot
-  const snapshot: FacilityAssetSnapshot = {
+  const snapshot: DepositFacilityAssetSnapshot = {
     id: snapshotId,
     chainId,
     block: BigInt(blockNumber),
@@ -371,7 +371,7 @@ export async function getOrCreateFacilityAssetSnapshot(
     claimableYieldDecimal: toDecimal(claimableYield, assetDecimals),
   };
 
-  context.FacilityAssetSnapshot.set(snapshot);
+  context.DepositFacilityAssetSnapshot.set(snapshot);
 
   // Update LatestSnapshot to include this new facility asset snapshot
   await updateLatestSnapshotFacilityAssets(
@@ -397,7 +397,7 @@ async function updateLatestSnapshotFacilities(
   const latestSnapshot = await getOrCreateLatestSnapshot(context, chainId);
 
   // Remove any existing snapshot for this facility
-  const filteredIds = latestSnapshot.facilitySnapshotIds.filter((id) => {
+  const filteredIds = latestSnapshot.depositFacilitySnapshotIds.filter((id) => {
     // Extract chainId and facility address from snapshot ID (format: chainId_blockNumber_facilityAddress)
     const parts = id.split("_");
     const existingFacilityAddress = parts[2];
@@ -409,7 +409,7 @@ async function updateLatestSnapshotFacilities(
   // Add the new snapshot ID
   const updatedSnapshot: LatestSnapshot = {
     ...latestSnapshot,
-    facilitySnapshotIds: [...filteredIds, snapshotId],
+    depositFacilitySnapshotIds: [...filteredIds, snapshotId],
   };
 
   context.LatestSnapshot.set(updatedSnapshot);
@@ -428,7 +428,7 @@ async function updateLatestSnapshotFacilityAssets(
   const latestSnapshot = await getOrCreateLatestSnapshot(context, chainId);
 
   // Remove any existing snapshot for this facility/asset combo
-  const filteredIds = latestSnapshot.facilityAssetSnapshotIds.filter((id) => {
+  const filteredIds = latestSnapshot.depositFacilityAssetSnapshotIds.filter((id) => {
     // Extract chainId, facility address, and asset address from snapshot ID (format: chainId_blockNumber_facilityAddress_assetAddress)
     const parts = id.split("_");
     const existingFacilityAddress = parts[2];
@@ -444,7 +444,7 @@ async function updateLatestSnapshotFacilityAssets(
   // Add the new snapshot ID
   const updatedSnapshot: LatestSnapshot = {
     ...latestSnapshot,
-    facilityAssetSnapshotIds: [...filteredIds, snapshotId],
+    depositFacilityAssetSnapshotIds: [...filteredIds, snapshotId],
   };
 
   context.LatestSnapshot.set(updatedSnapshot);
@@ -463,7 +463,7 @@ export async function updateFacilityAssetDeposited(
   delta: bigint,
 ): Promise<void> {
   // Get or create facility snapshot
-  const facilitySnapshot = await getOrCreateFacilitySnapshot(
+  const facilitySnapshot = await getOrCreateDepositFacilitySnapshot(
     context,
     chainId,
     blockNumber,
@@ -472,7 +472,7 @@ export async function updateFacilityAssetDeposited(
   );
 
   // Get or create facility asset snapshot
-  const assetSnapshot = await getOrCreateFacilityAssetSnapshot(
+  const assetSnapshot = await getOrCreateDepositFacilityAssetSnapshot(
     context,
     chainId,
     blockNumber,
@@ -490,14 +490,14 @@ export async function updateFacilityAssetDeposited(
   const claimableYield = await fetchClaimableYield(context, chainId, facility, depositAsset);
 
   // Update and save snapshot
-  const updatedSnapshot: FacilityAssetSnapshot = {
+  const updatedSnapshot: DepositFacilityAssetSnapshot = {
     ...assetSnapshot,
     totalDeposited: updatedTotalDeposited,
     totalDepositedDecimal: toDecimal(updatedTotalDeposited, assetDecimals),
     claimableYield,
     claimableYieldDecimal: toDecimal(claimableYield, assetDecimals),
   };
-  context.FacilityAssetSnapshot.set(updatedSnapshot);
+  context.DepositFacilityAssetSnapshot.set(updatedSnapshot);
 }
 
 /**
@@ -513,7 +513,7 @@ export async function updateFacilityAssetPendingRedemption(
   delta: bigint,
 ): Promise<void> {
   // Get or create facility snapshot
-  const facilitySnapshot = await getOrCreateFacilitySnapshot(
+  const facilitySnapshot = await getOrCreateDepositFacilitySnapshot(
     context,
     chainId,
     blockNumber,
@@ -522,7 +522,7 @@ export async function updateFacilityAssetPendingRedemption(
   );
 
   // Get or create facility asset snapshot
-  const assetSnapshot = await getOrCreateFacilityAssetSnapshot(
+  const assetSnapshot = await getOrCreateDepositFacilityAssetSnapshot(
     context,
     chainId,
     blockNumber,
@@ -537,12 +537,12 @@ export async function updateFacilityAssetPendingRedemption(
   const assetDecimals = await getDepositAssetDecimals(context, depositAsset.id);
 
   // Update and save snapshot
-  const updatedSnapshot: FacilityAssetSnapshot = {
+  const updatedSnapshot: DepositFacilityAssetSnapshot = {
     ...assetSnapshot,
     pendingRedemption: updatedPendingRedemption,
     pendingRedemptionDecimal: toDecimal(updatedPendingRedemption, assetDecimals),
   };
-  context.FacilityAssetSnapshot.set(updatedSnapshot);
+  context.DepositFacilityAssetSnapshot.set(updatedSnapshot);
 }
 
 /**
@@ -558,7 +558,7 @@ export async function updateFacilityAssetBorrowedAmount(
   delta: bigint,
 ): Promise<void> {
   // Get or create facility snapshot
-  const facilitySnapshot = await getOrCreateFacilitySnapshot(
+  const facilitySnapshot = await getOrCreateDepositFacilitySnapshot(
     context,
     chainId,
     blockNumber,
@@ -567,7 +567,7 @@ export async function updateFacilityAssetBorrowedAmount(
   );
 
   // Get or create facility asset snapshot
-  const assetSnapshot = await getOrCreateFacilityAssetSnapshot(
+  const assetSnapshot = await getOrCreateDepositFacilityAssetSnapshot(
     context,
     chainId,
     blockNumber,
@@ -582,11 +582,11 @@ export async function updateFacilityAssetBorrowedAmount(
   const assetDecimals = await getDepositAssetDecimals(context, depositAsset.id);
 
   // Update and save snapshot
-  const updatedSnapshot: FacilityAssetSnapshot = {
+  const updatedSnapshot: DepositFacilityAssetSnapshot = {
     ...assetSnapshot,
     borrowedAmount: updatedBorrowedAmount,
     borrowedAmountDecimal: toDecimal(updatedBorrowedAmount, assetDecimals),
   };
 
-  context.FacilityAssetSnapshot.set(updatedSnapshot);
+  context.DepositFacilityAssetSnapshot.set(updatedSnapshot);
 }

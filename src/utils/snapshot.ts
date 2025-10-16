@@ -37,9 +37,9 @@ export function getAuctioneerDepositPeriodSnapshotId(
 }
 
 /**
- * Get the ID for a FacilitySnapshot entity
+ * Get the ID for a DepositFacilitySnapshot entity
  */
-export function getFacilitySnapshotId(
+export function getDepositFacilitySnapshotId(
   chainId: number,
   blockNumber: number | bigint,
   facilityAddress: string,
@@ -48,9 +48,9 @@ export function getFacilitySnapshotId(
 }
 
 /**
- * Get the ID for a FacilityAssetSnapshot entity
+ * Get the ID for a DepositFacilityAssetSnapshot entity
  */
-export function getFacilityAssetSnapshotId(
+export function getDepositFacilityAssetSnapshotId(
   chainId: number,
   blockNumber: number | bigint,
   facilityAddress: string,
