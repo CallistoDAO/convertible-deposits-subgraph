@@ -9,6 +9,7 @@ import {
   type ConvertibleDepositFacility_AssetPeriodReclaimRateSet,
   type ConvertibleDepositFacility_ClaimedYield,
   type ConvertibleDepositFacility_ConvertedDeposit,
+  type ConvertibleDepositFacility_ConvertedDeposits,
   type ConvertibleDepositFacility_CreatedDeposit,
   type ConvertibleDepositFacility_Disabled,
   type ConvertibleDepositFacility_Enabled,
@@ -16,7 +17,7 @@ import {
   type ConvertibleDepositFacility_OperatorDeauthorized,
   type ConvertibleDepositFacility_Reclaimed,
 } from "generated";
-import { fetchUserPositionIds } from "../contracts/position";
+import { fetchPositions, fetchUserPositionIds } from "../contracts/position";
 import { getAssetDecimals } from "../entities/asset";
 import {
   getOrCreateDepositFacility,
@@ -24,10 +25,9 @@ import {
   getOrCreateDepositFacilityAssetPeriod,
 } from "../entities/depositFacility";
 import { getOrCreateDepositor } from "../entities/depositor";
-import { getOrCreatePosition, updatePositionFromContract } from "../entities/position";
-import { getOrCreateReceiptToken } from "../entities/receiptToken";
+import { getOrCreatePosition } from "../entities/position";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
-import { getBlockId, getPositionId } from "../utils/ids";
+import { buildEntityId, getBlockId, getPositionId } from "../utils/ids";
 
 ConvertibleDepositFacility.AssetCommitCancelled.handler(async ({ event, context }) => {
   const id = getBlockId(event.chainId, event.block.number, event.logIndex);
@@ -221,21 +221,11 @@ ConvertibleDepositFacility.ConvertedDeposit.handler(async ({ event, context }) =
     event.params.asset,
     Number(event.params.periodMonths),
   );
-  const receiptToken = await getOrCreateReceiptToken(
-    context,
-    event.chainId,
-    event.srcAddress,
-    event.params.asset,
-    Number(event.params.periodMonths),
-  );
   const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset);
 
-  // Record event
-  const entity: ConvertibleDepositFacility_ConvertedDeposit = {
+  // Create record for the original event
+  const entity: ConvertibleDepositFacility_ConvertedDeposits = {
     id,
-    facilityAssetPeriod_id: facilityAssetPeriod.id,
-    receiptToken_id: receiptToken.id,
-    depositor_id: depositor.id,
     chainId: event.chainId,
     txHash: event.transaction.hash,
     block: BigInt(event.block.number),
@@ -245,23 +235,62 @@ ConvertibleDepositFacility.ConvertedDeposit.handler(async ({ event, context }) =
     convertedAmount: event.params.convertedAmount,
     convertedAmountDecimal: toOhmDecimal(event.params.convertedAmount),
   };
-  context.ConvertibleDepositFacility_ConvertedDeposit.set(entity);
+  context.ConvertibleDepositFacility_ConvertedDeposits.set(entity);
 
   // Update positions of depositor for this asset period
-  const userPositionIds = await context.effect(fetchUserPositionIds, {
+  const contractPositionIds = await context.effect(fetchUserPositionIds, {
     chainId: event.chainId,
     userAddress: event.params.depositor,
   });
+  const contractPositions = await context.effect(fetchPositions, {
+    chainId: event.chainId,
+    positionIds: contractPositionIds,
+  });
 
   // Update positions of depositor for this asset period
-  for (const positionId of userPositionIds) {
-    const positionRecordId = getPositionId(event.chainId, positionId);
-    const position = await context.ConvertibleDepositPosition.get(positionRecordId);
+  for (let i = 0; i < contractPositionIds.length; i++) {
+    const contractPositionId = contractPositionIds[i];
+    const contractPosition = contractPositions[i];
+    const recordPositionId = getPositionId(event.chainId, contractPositionId);
+    const recordPosition = await context.ConvertibleDepositPosition.get(recordPositionId);
 
-    if (!position) continue;
-    if (position.assetPeriod_id !== facilityAssetPeriod.depositAssetPeriod_id) continue;
+    if (!recordPosition) continue;
+    if (recordPosition.assetPeriod_id !== facilityAssetPeriod.depositAssetPeriod_id) continue;
 
-    await updatePositionFromContract(context, positionRecordId, assetDecimals);
+    // Skip if the position's remaining amount and the contract value are the same
+    const depositConvertedAmount =
+      recordPosition.remainingAmount - contractPosition.remainingDeposit;
+    if (depositConvertedAmount === 0n) continue;
+
+    // Calculate the amount converted
+    const convertedAmount =
+      (depositConvertedAmount * BigInt(1e9)) / contractPosition.conversionPrice;
+
+    // Create record for the converted deposit
+    const convertedDepositEntity: ConvertibleDepositFacility_ConvertedDeposit = {
+      id: buildEntityId([event.chainId, event.block.number, event.logIndex, contractPositionId]),
+      chainId: event.chainId,
+      txHash: event.transaction.hash,
+      block: BigInt(event.block.number),
+      timestamp: BigInt(event.block.timestamp),
+      position_id: recordPositionId,
+      facilityAssetPeriod_id: facilityAssetPeriod.id,
+      depositor_id: depositor.id,
+      depositAmount: depositConvertedAmount,
+      depositAmountDecimal: toDecimal(depositConvertedAmount, assetDecimals),
+      convertedAmount: convertedAmount,
+      convertedAmountDecimal: toOhmDecimal(convertedAmount),
+      convertedDeposits_id: entity.id,
+    };
+    context.ConvertibleDepositFacility_ConvertedDeposit.set(convertedDepositEntity);
+
+    // Update the position record with the new remaining amount
+    const updatedPosition = {
+      ...recordPosition,
+      remainingAmount: contractPosition.remainingDeposit,
+      remainingAmountDecimal: toDecimal(contractPosition.remainingDeposit, assetDecimals),
+    };
+    context.ConvertibleDepositPosition.set(updatedPosition);
   }
 });
 

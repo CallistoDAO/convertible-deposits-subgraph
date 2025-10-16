@@ -223,7 +223,6 @@ type ReceiptToken {
 
   positions: [ConvertibleDepositPosition!]! @derivedFrom(field: "receiptToken")
   redemptions: [Redemption!]! @derivedFrom(field: "receiptToken")
-  convertedDepositEvents: [ConvertibleDepositFacility_ConvertedDeposit!]! @derivedFrom(field: "receiptToken")
 }
 
 # Convertible deposit position entity type
@@ -460,6 +459,9 @@ type ConvertibleDepositFacility_ClaimedYield {
   amountDecimal: BigDecimal!
 }
 
+# Entity that represents a deposit converted into OHM
+# The structure mimics an event that would be emitted by the contract,
+# given the contract emits a single ConvertedDeposit event for multiple positions
 type ConvertibleDepositFacility_ConvertedDeposit {
   id: ID!
   chainId: Int! @index
@@ -467,13 +469,31 @@ type ConvertibleDepositFacility_ConvertedDeposit {
   block: BigInt! @index
   timestamp: BigInt! @index
 
+  position: ConvertibleDepositPosition!
   facilityAssetPeriod: DepositFacilityAssetPeriod!
-  receiptToken: ReceiptToken!
+
   depositor: Depositor!
   depositAmount: BigInt!
   depositAmountDecimal: BigDecimal!
   convertedAmount: BigInt!
   convertedAmountDecimal: BigDecimal!
+
+  convertedDeposits: ConvertibleDepositFacility_ConvertedDeposits!
+}
+
+type ConvertibleDepositFacility_ConvertedDeposits {
+  id: ID!
+  chainId: Int! @index
+  txHash: String! @index
+  block: BigInt! @index
+  timestamp: BigInt! @index
+
+  depositAmount: BigInt!
+  depositAmountDecimal: BigDecimal!
+  convertedAmount: BigInt!
+  convertedAmountDecimal: BigDecimal!
+
+  convertedDeposits: [ConvertibleDepositFacility_ConvertedDeposit!]! @derivedFrom(field: "convertedDeposits")
 }
 
 type ConvertibleDepositFacility_CreatedDeposit {
