@@ -14,7 +14,15 @@
     "format": "biome check --write .",
     "format:check": "biome check .",
     "generate-config": "tsx generate-config.js",
-    "init": "git submodule update --init"
+    "init": "git submodule update --init",
+    "docker:build": "docker build -t convertible-deposits-indexer:latest .",
+    "docker:up": "docker-compose -f docker-compose.indexer.yaml up -d",
+    "docker:down": "docker-compose -f docker-compose.indexer.yaml down",
+    "docker:logs": "docker-compose -f docker-compose.indexer.yaml logs -f envio-indexer",
+    "docker:logs:init": "docker-compose -f docker-compose.indexer.yaml logs hasura-init",
+    "docker:init": "docker-compose -f docker-compose.indexer.yaml up hasura-init",
+    "docker:rebuild": "docker-compose -f docker-compose.indexer.yaml up --build -d",
+    "docker:clean": "docker-compose -f docker-compose.indexer.yaml down -v"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.5",

@@ -1,0 +1,8 @@
+{
+  "networks": [
+    {
+      "name": "sepolia",
+      "chainId": 11155111
+    }
+  ]
+}

@@ -12,6 +12,7 @@ This project uses Handlebars templates to dynamically generate `config.yaml` fro
 ## Features
 
 - **Multi-Network Support**: Configure multiple networks (Sepolia, Mainnet, etc.) in a single config file
+- **Custom RPC Endpoints**: Configure custom RPC endpoints per network with automatic failover support
 - **Automatic Block Fetching**: Automatically fetches contract deployment blocks from Etherscan v2 API
 - **Per-Contract Start Blocks**: Each contract can have its own start_block for efficient indexing
 - **Multi-Chain Support**: Uses Etherscan v2 multichain API (single endpoint for all networks)
@@ -144,6 +145,87 @@ The `config.json` file is **minimal** - just specify the networks! The script au
 - Satisfies Envio's schema requirement (network start_block is required)
 - Each contract can have its own start_block >= network start_block
 - **Calculated in memory** - not written to config.json
+
+### RPC Configuration
+
+You can configure custom RPC endpoints for each network. Envio uses HyperSync as the primary data source and RPC as an automatic fallback.
+
+**Basic RPC Configuration:**
+```json
+{
+  "networks": [
+    {
+      "name": "sepolia",
+      "chainId": 11155111,
+      "rpc": "https://app.dahlia.xyz/rpc/evm/11155111"
+    }
+  ]
+}
+```
+
+**Multiple Networks with Different RPC Endpoints:**
+```json
+{
+  "networks": [
+    {
+      "name": "sepolia",
+      "chainId": 11155111,
+      "rpc": "https://app.dahlia.xyz/rpc/evm/11155111"
+    },
+    {
+      "name": "mainnet",
+      "chainId": 1,
+      "rpc": "https://app.dahlia.xyz/rpc/evm/1"
+    }
+  ]
+}
+```
+
+**Using Environment Variables for API Keys:**
+```json
+{
+  "networks": [
+    {
+      "name": "sepolia",
+      "chainId": 11155111,
+      "rpc": "https://eth-sepolia.g.alchemy.com/v2/{ALCHEMY_API_KEY}"
+    }
+  ]
+}
+```
+
+Then set the environment variable:
+```bash
+export ALCHEMY_API_KEY="your_api_key_here"
+# or add to .env file
+ALCHEMY_API_KEY="your_api_key_here"
+```
+
+**Advanced: Multiple RPC Endpoints with Priorities**
+
+For maximum reliability, you can configure multiple RPC endpoints directly in `config.yaml` after generation:
+
+```yaml
+networks:
+- id: 11155111
+  start_block: 9179734
+  rpc:
+    - url: https://app.dahlia.xyz/rpc/evm/11155111
+      for: fallback
+    - url: https://eth-sepolia.g.alchemy.com/v2/{ALCHEMY_API_KEY}
+      for: fallback
+      initial_block_interval: 1000
+    - url: https://eth-sepolia.public.blastapi.io
+      for: fallback
+```
+
+**How RPC Failover Works:**
+- Envio uses HyperSync as the primary data source
+- If HyperSync doesn't receive a new block for 20+ seconds, it automatically switches to your RPC endpoint
+- With multiple RPC endpoints, it tries them in order if one fails
+- This ensures 100% uptime for your indexer
+- Recommended for production deployments
+- Requires Envio HyperIndex v2.14.0 or later
 
 ### How It Works
 

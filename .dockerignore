@@ -1,0 +1,77 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+build/
+dist/
+
+# Generated files (will be regenerated during docker build)
+generated/
+
+# Git files
+.git/
+.gitignore
+.gitmodules
+.github/
+
+# IDE and editor files
+.vscode/
+.idea/
+.cursor/
+.claude/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files (use docker env vars instead)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test files (optional - include if you want to run tests in container)
+# test/
+
+# Documentation (optional - exclude to reduce image size)
+README.md
+CLAUDE.md
+CONFIG-GENERATION.md
+
+# Config variants (keep only the main config.yaml)
+config.*.json
+config.*.yaml
+
+# Git submodule source files (keep only deployments directory)
+olympus-v3/.git
+olympus-v3/.github
+olympus-v3/src
+olympus-v3/lib
+olympus-v3/test
+olympus-v3/*.md
+olympus-v3/*.sol
+olympus-v3/*.ts
+olympus-v3/*.js
+olympus-v3/.env*
+olympus-v3/foundry.toml
+olympus-v3/remappings.txt
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose*.yml
+docker-compose*.yaml
+
+# CI/CD
+.github/
+
+# Temporary files
+*.tmp
+*.temp
