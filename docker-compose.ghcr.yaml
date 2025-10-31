@@ -1,0 +1,294 @@
+# Docker Compose configuration using pre-built image from GitHub Container Registry
+# Usage: docker-compose -f docker-compose.ghcr.yaml up -d
+
+services:
+  envio-postgres:
+    image: postgres:17.5
+    restart: always
+    ports:
+      - "${ENVIO_PG_PORT:-5433}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: ${ENVIO_PG_PASSWORD:-testing}
+      POSTGRES_USER: ${ENVIO_PG_USER:-postgres}
+      POSTGRES_DB: ${ENVIO_PG_DATABASE:-envio-dev}
+    networks:
+      - my-proxy-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ENVIO_PG_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  graphql-engine:
+    image: hasura/graphql-engine:v2.43.0
+    ports:
+      - "${HASURA_EXTERNAL_PORT:-8080}:8080"
+    depends_on:
+      envio-postgres:
+        condition: service_healthy
+    restart: always
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://${ENVIO_PG_USER:-postgres}:${ENVIO_PG_PASSWORD:-testing}@envio-postgres:5432/${ENVIO_PG_DATABASE:-envio-dev}
+      HASURA_GRAPHQL_ENABLE_CONSOLE: ${HASURA_GRAPHQL_ENABLE_CONSOLE:-true}
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES:
+        startup, http-log, webhook-log, websocket-log,
+        query-log
+      HASURA_GRAPHQL_NO_OF_RETRIES: 10
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET:-testing}
+      HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES: "true"
+      HASURA_GRAPHQL_UNAUTHORIZED_ROLE: public
+      PORT: 8080
+    healthcheck:
+      test: timeout 1s bash -c ':> /dev/tcp/127.0.0.1/8080' || exit 1
+      interval: 5s
+      timeout: 2s
+      retries: 50
+      start_period: 5s
+    networks:
+      - my-proxy-net
+
+  envio-indexer:
+    # Use pre-built image from GitHub Container Registry
+    # Replace <owner> with your GitHub username or organization
+    image: ghcr.io/${GITHUB_REPOSITORY:-olympusdao/convertible-deposits-subgraph}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      envio-postgres:
+        condition: service_healthy
+      graphql-engine:
+        condition: service_healthy
+    environment:
+      # Database connection
+      ENVIO_PG_HOST: envio-postgres
+      ENVIO_PG_PORT: 5432
+      ENVIO_PG_USER: ${ENVIO_PG_USER:-postgres}
+      ENVIO_PG_PASSWORD: ${ENVIO_PG_PASSWORD:-testing}
+      ENVIO_PG_DATABASE: ${ENVIO_PG_DATABASE:-envio-dev}
+
+      # Hasura connection
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET:-testing}
+      HASURA_URL: http://graphql-engine:8080
+
+      # Envio API token (required for HyperSync)
+      ENVIO_API_TOKEN: ${ENVIO_API_TOKEN}
+
+      # Optional: Etherscan API key for block lookups
+      ETHERSCAN_API_KEY: ${ETHERSCAN_API_KEY:-}
+
+      # Indexer behavior
+      ENVIO_HASURA: ${ENVIO_HASURA:-true}
+
+    networks:
+      - my-proxy-net
+    volumes:
+      # Optional: Persist indexer cache
+      - indexer_cache:/envio-indexer/.envio
+
+  hasura-init:
+    image: curlimages/curl:latest
+    depends_on:
+      graphql-engine:
+        condition: service_healthy
+      envio-indexer:
+        condition: service_started
+    restart: "no"
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        set -e
+
+        echo "⏳ Waiting for indexer to create initial tables..."
+        sleep 15
+
+        HASURA_URL="http://graphql-engine:8080"
+        ADMIN_SECRET="${HASURA_GRAPHQL_ADMIN_SECRET:-testing}"
+
+        echo "🔍 Step 1: Checking database source configuration..."
+
+        # Ensure the default database source exists and is properly configured
+        curl -s -X POST "$${HASURA_URL}/v1/metadata" \
+          -H "X-Hasura-Admin-Secret: $${ADMIN_SECRET}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "type": "pg_add_source",
+            "args": {
+              "name": "default",
+              "configuration": {
+                "connection_info": {
+                  "database_url": {
+                    "from_env": "HASURA_GRAPHQL_DATABASE_URL"
+                  },
+                  "pool_settings": {
+                    "retries": 1,
+                    "idle_timeout": 180,
+                    "max_connections": 50
+                  }
+                }
+              },
+              "replace_configuration": true
+            }
+          }' > /dev/null 2>&1 || echo "   Database source already exists or error occurred"
+
+        echo "✅ Database source configured"
+        echo ""
+        echo "📊 Step 2: Tracking all entity tables..."
+
+        # Track all main entity tables
+        TRACK_RESULT=$$(curl -s -w "\n%{http_code}" -X POST "$${HASURA_URL}/v1/metadata" \
+          -H "X-Hasura-Admin-Secret: $${ADMIN_SECRET}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "type": "bulk",
+            "args": [
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "Asset"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "Auctioneer"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "AuctioneerDepositPeriod"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "AuctioneerDepositPeriodSnapshot"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "AuctioneerSnapshot"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "ConvertibleDepositPosition"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "DepositAsset"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "DepositAssetPeriod"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "DepositFacility"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "DepositFacilityAsset"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "DepositFacilityAssetPeriod"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "DepositFacilityAssetSnapshot"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "DepositFacilitySnapshot"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "DepositRedemptionVault"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "DepositRedemptionVaultAssetConfiguration"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "Depositor"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "LatestSnapshot"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "ReceiptToken"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "Redemption"}}},
+              {"type": "pg_track_table", "args": {"source": "default", "table": {"schema": "public", "name": "RedemptionLoan"}}}
+            ]
+          }')
+
+        HTTP_CODE=$$(echo "$${TRACK_RESULT}" | tail -n1)
+
+        if [ "$${HTTP_CODE}" = "200" ]; then
+          echo "✅ Entity tables tracked successfully!"
+        else
+          echo "⚠️  Some tables may already be tracked (HTTP $${HTTP_CODE})"
+        fi
+
+        echo ""
+        echo "🔗 Step 3: Setting up GraphQL relationships..."
+
+        # Create relationships
+        curl -s -X POST "$${HASURA_URL}/v1/metadata" \
+          -H "X-Hasura-Admin-Secret: $${ADMIN_SECRET}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "type": "bulk",
+            "args": [
+              {
+                "type": "pg_create_object_relationship",
+                "args": {
+                  "source": "default",
+                  "table": {"schema": "public", "name": "ConvertibleDepositPosition"},
+                  "name": "depositor",
+                  "using": {"foreign_key_constraint_on": "depositor_id"}
+                }
+              },
+              {
+                "type": "pg_create_object_relationship",
+                "args": {
+                  "source": "default",
+                  "table": {"schema": "public", "name": "ConvertibleDepositPosition"},
+                  "name": "facility",
+                  "using": {"foreign_key_constraint_on": "facility_id"}
+                }
+              },
+              {
+                "type": "pg_create_object_relationship",
+                "args": {
+                  "source": "default",
+                  "table": {"schema": "public", "name": "ConvertibleDepositPosition"},
+                  "name": "depositAssetPeriod",
+                  "using": {"foreign_key_constraint_on": "depositAssetPeriod_id"}
+                }
+              },
+              {
+                "type": "pg_create_object_relationship",
+                "args": {
+                  "source": "default",
+                  "table": {"schema": "public", "name": "Redemption"},
+                  "name": "depositor",
+                  "using": {"foreign_key_constraint_on": "depositor_id"}
+                }
+              },
+              {
+                "type": "pg_create_object_relationship",
+                "args": {
+                  "source": "default",
+                  "table": {"schema": "public", "name": "RedemptionLoan"},
+                  "name": "redemption",
+                  "using": {"foreign_key_constraint_on": "redemption_id"}
+                }
+              },
+              {
+                "type": "pg_create_array_relationship",
+                "args": {
+                  "source": "default",
+                  "table": {"schema": "public", "name": "Depositor"},
+                  "name": "positions",
+                  "using": {
+                    "foreign_key_constraint_on": {
+                      "table": {"schema": "public", "name": "ConvertibleDepositPosition"},
+                      "column": "depositor_id"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "pg_create_array_relationship",
+                "args": {
+                  "source": "default",
+                  "table": {"schema": "public", "name": "Depositor"},
+                  "name": "redemptions",
+                  "using": {
+                    "foreign_key_constraint_on": {
+                      "table": {"schema": "public", "name": "Redemption"},
+                      "column": "depositor_id"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "pg_create_array_relationship",
+                "args": {
+                  "source": "default",
+                  "table": {"schema": "public", "name": "Redemption"},
+                  "name": "loans",
+                  "using": {
+                    "foreign_key_constraint_on": {
+                      "table": {"schema": "public", "name": "RedemptionLoan"},
+                      "column": "redemption_id"
+                    }
+                  }
+                }
+              }
+            ]
+          }' > /dev/null 2>&1 && echo "✅ Relationships created!" || echo "⚠️  Some relationships may already exist"
+
+        echo ""
+        echo "✅ Hasura initialization complete!"
+        echo ""
+        echo "📍 GraphQL endpoints:"
+        echo "   • API: http://localhost:${HASURA_EXTERNAL_PORT:-8080}/v1/graphql"
+        echo "   • Console: http://localhost:${HASURA_EXTERNAL_PORT:-8080}"
+        echo "   • Admin secret: $${ADMIN_SECRET}"
+        echo ""
+    networks:
+      - my-proxy-net
+
+volumes:
+  db_data:
+  indexer_cache:
+
+networks:
+  my-proxy-net:
+    name: local_test_network

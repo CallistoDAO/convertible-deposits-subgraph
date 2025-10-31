@@ -38,7 +38,36 @@ ETHERSCAN_API_KEY="your_etherscan_api_key"
 
 ## Quick Start
 
-### Option 1: Build and Run Full Stack
+### Option 1: Use Pre-Built Image from GitHub Container Registry (Fastest)
+
+Pull and run the pre-built image without building locally:
+
+```bash
+# Copy environment template
+cp .env.ghcr.example .env
+
+# Edit .env and set:
+# - GITHUB_REPOSITORY (e.g., olympusdao/convertible-deposits-subgraph)
+# - IMAGE_TAG (e.g., latest, v1.0.0)
+# - ENVIO_API_TOKEN
+
+# Pull the latest image
+pnpm ghcr:pull
+
+# Start all services
+pnpm ghcr:up
+
+# View logs
+pnpm ghcr:logs
+```
+
+**Benefits:**
+- ✅ No local build required (saves 3-5 minutes)
+- ✅ Consistent images across team
+- ✅ Automatic updates via GitHub Actions
+- ✅ Production-ready images
+
+### Option 2: Build and Run Full Stack
 
 Build and start all services (Postgres + Hasura + Indexer):
 
@@ -309,8 +338,85 @@ jobs:
           docker push convertible-deposits-indexer:${{ github.sha }}
 ```
 
+## GitHub Container Registry Deployment
+
+### Pulling Pre-Built Images
+
+The project includes GitHub Actions workflow that automatically builds and pushes images to GitHub Container Registry.
+
+**Available Scripts:**
+```bash
+pnpm ghcr:pull      # Pull latest image
+pnpm ghcr:up        # Start services with pre-built image
+pnpm ghcr:down      # Stop services
+pnpm ghcr:logs      # View indexer logs
+pnpm ghcr:restart   # Pull latest and restart
+pnpm ghcr:clean     # Stop and remove all data
+```
+
+### Using Specific Versions
+
+Edit `.env` to use specific versions:
+
+```bash
+# Use latest (auto-updated on every push to main)
+IMAGE_TAG=latest
+
+# Use specific semantic version (recommended for production)
+IMAGE_TAG=v1.0.0
+
+# Use specific commit (for testing)
+IMAGE_TAG=master-abc1234
+```
+
+### Making Images Public
+
+By default, images are private. To make public:
+
+1. Go to: https://github.com/users/YOUR_USERNAME/packages/container/convertible-deposits-subgraph/settings
+2. Scroll to "Danger Zone"
+3. Click "Change visibility" → "Public"
+
+### Private Image Access
+
+For private images, authenticate Docker:
+
+```bash
+# Create GitHub Personal Access Token with read:packages scope
+# https://github.com/settings/tokens/new
+
+# Login to GitHub Container Registry
+echo $GITHUB_TOKEN | docker login ghcr.io -u YOUR_USERNAME --password-stdin
+
+# Now pull will work
+pnpm ghcr:pull
+```
+
+### Continuous Deployment
+
+The GitHub Actions workflow automatically:
+- ✅ Builds on every push to `master`/`main`
+- ✅ Creates version tags on git tags (`v*`)
+- ✅ Uses build cache for faster builds
+- ✅ Publishes to `ghcr.io/YOUR_ORG/convertible-deposits-subgraph`
+
+**To deploy a new version:**
+
+```bash
+# Tag the release
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+
+# GitHub Actions builds and pushes automatically
+# Wait ~3-5 minutes for build
+
+# Update production
+IMAGE_TAG=v1.0.0 pnpm ghcr:restart
+```
+
 ## Additional Resources
 
 - [Envio Docker Example](https://github.com/enviodev/local-docker-example)
 - [Envio Documentation](https://docs.envio.dev)
 - [Hasura Docker Guide](https://hasura.io/docs/latest/deployment/deployment-guides/docker/)
+- [GitHub Container Registry Docs](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)

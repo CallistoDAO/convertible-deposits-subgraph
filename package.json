@@ -22,7 +22,13 @@
     "docker:logs:init": "docker-compose -f docker-compose.indexer.yaml logs hasura-init",
     "docker:init": "docker-compose -f docker-compose.indexer.yaml up hasura-init",
     "docker:rebuild": "docker-compose -f docker-compose.indexer.yaml up --build -d",
-    "docker:clean": "docker-compose -f docker-compose.indexer.yaml down -v"
+    "docker:clean": "docker-compose -f docker-compose.indexer.yaml down -v",
+    "ghcr:pull": "docker-compose -f docker-compose.ghcr.yaml pull",
+    "ghcr:up": "docker-compose -f docker-compose.ghcr.yaml up -d",
+    "ghcr:down": "docker-compose -f docker-compose.ghcr.yaml down",
+    "ghcr:logs": "docker-compose -f docker-compose.ghcr.yaml logs -f envio-indexer",
+    "ghcr:restart": "docker-compose -f docker-compose.ghcr.yaml pull && docker-compose -f docker-compose.ghcr.yaml up -d",
+    "ghcr:clean": "docker-compose -f docker-compose.ghcr.yaml down -v"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.5",
