@@ -15,10 +15,10 @@
  *   Can be set via .env file or exported in shell
  */
 
-import { config as dotenvConfig } from "dotenv";
-import Handlebars from "handlebars";
 import fs from "node:fs";
 import path from "node:path";
+import { config as dotenvConfig } from "dotenv";
+import Handlebars from "handlebars";
 
 // Load environment variables from .env file
 dotenvConfig();
@@ -154,7 +154,9 @@ function findContractInDeployment(contractName, deploymentContracts) {
   }
 
   // Try suffix match (case-insensitive)
-  const matchedKey = deploymentKeys.find((key) => key.toLowerCase().endsWith(contractName.toLowerCase()));
+  const matchedKey = deploymentKeys.find((key) =>
+    key.toLowerCase().endsWith(contractName.toLowerCase()),
+  );
 
   if (matchedKey) {
     return { key: matchedKey, address: deploymentContracts[matchedKey] };
@@ -169,7 +171,9 @@ function findContractInDeployment(contractName, deploymentContracts) {
 function discoverContractAddressesForNetwork(networkConfig, deployments, contractNames) {
   // Determine network name from chain ID
   const chainId = networkConfig.chainId;
-  const networkName = Object.keys(NETWORK_TO_CHAIN_ID).find((net) => NETWORK_TO_CHAIN_ID[net] === chainId);
+  const networkName = Object.keys(NETWORK_TO_CHAIN_ID).find(
+    (net) => NETWORK_TO_CHAIN_ID[net] === chainId,
+  );
 
   if (!networkName) {
     console.log(`⚠ Unknown chain ID: ${chainId}, skipping deployment discovery`);
@@ -182,9 +186,7 @@ function discoverContractAddressesForNetwork(networkConfig, deployments, contrac
     return;
   }
 
-  console.log(
-    `📂 Found ${networkDeployment.filesProcessed} deployment file(s) for ${networkName}`,
-  );
+  console.log(`📂 Found ${networkDeployment.filesProcessed} deployment file(s) for ${networkName}`);
   console.log(`   Merged ${Object.keys(networkDeployment.contracts).length} unique contracts`);
 
   // Map contracts from deployment to network config
@@ -268,7 +270,12 @@ async function fetchDeploymentBlocks(networkConfig, contractNames) {
     const address = networkConfig[contractName];
     const currentBlock = networkConfig[blockKey];
 
-    if (address && address !== "" && address !== "0x..." && (currentBlock === 0 || currentBlock === undefined)) {
+    if (
+      address &&
+      address !== "" &&
+      address !== "0x..." &&
+      (currentBlock === 0 || currentBlock === undefined)
+    ) {
       console.log(`⏳ Fetching creation block for ${contractName} (${address})...`);
 
       const block = await fetchContractCreationBlock(networkConfig.chainId, address);
@@ -294,7 +301,9 @@ async function main() {
 
     // Parse contract names from template
     const contractNames = parseContractNamesFromTemplate();
-    console.log(`📝 Parsed ${contractNames.length} contracts from template: ${contractNames.join(", ")}`);
+    console.log(
+      `📝 Parsed ${contractNames.length} contracts from template: ${contractNames.join(", ")}`,
+    );
 
     // Read the config JSON
     const configData = JSON.parse(fs.readFileSync(configJsonPath, "utf-8"));
@@ -321,7 +330,9 @@ async function main() {
 
       if (contractBlocks.length > 0) {
         network.startBlock = Math.min(...contractBlocks);
-        console.log(`✓ ${network.name} start block set to ${network.startBlock} (earliest contract)`);
+        console.log(
+          `✓ ${network.name} start block set to ${network.startBlock} (earliest contract)`,
+        );
       } else if (!network.startBlock) {
         network.startBlock = 0;
         console.log(`⚠ ${network.name} start block defaulting to 0 (no contract blocks found)`);
