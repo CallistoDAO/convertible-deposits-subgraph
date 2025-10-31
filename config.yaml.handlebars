@@ -1,9 +1,10 @@
 # yaml-language-server: $schema=./node_modules/envio/evm.schema.json
 name: olympus-convertible-deposits
 networks:
-- id: {{CHAIN_ID}}
-  {{#if NETWORK_START_BLOCK}}
-  start_block: {{NETWORK_START_BLOCK}}
+{{#each networks}}
+- id: {{chainId}}
+  {{#if startBlock}}
+  start_block: {{startBlock}}
   {{else}}
   start_block: 0
   {{/if}}
@@ -69,6 +70,7 @@ networks:
     - event: RedemptionCancelled(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount, uint256 remainingAmount)
     - event: RedemptionFinished(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount)
     - event: RedemptionStarted(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount, address facility)
+{{/each}}
 unordered_multichain_mode: true
 preload_handlers: true
 field_selection:

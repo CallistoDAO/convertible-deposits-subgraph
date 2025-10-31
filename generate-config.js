@@ -164,22 +164,22 @@ function findContractInDeployment(contractName, deploymentContracts) {
 }
 
 /**
- * Discover contract addresses from deployment files
+ * Discover contract addresses from deployment files for a specific network
  */
-function discoverContractAddresses(configData, deployments, contractNames) {
-  // Determine network from config
-  const chainId = configData.CHAIN_ID;
+function discoverContractAddressesForNetwork(networkConfig, deployments, contractNames) {
+  // Determine network name from chain ID
+  const chainId = networkConfig.chainId;
   const networkName = Object.keys(NETWORK_TO_CHAIN_ID).find((net) => NETWORK_TO_CHAIN_ID[net] === chainId);
 
   if (!networkName) {
     console.log(`⚠ Unknown chain ID: ${chainId}, skipping deployment discovery`);
-    return configData;
+    return;
   }
 
   const networkDeployment = deployments[networkName];
   if (!networkDeployment) {
     console.log(`⚠ No deployments found for network: ${networkName}`);
-    return configData;
+    return;
   }
 
   console.log(
@@ -187,12 +187,12 @@ function discoverContractAddresses(configData, deployments, contractNames) {
   );
   console.log(`   Merged ${Object.keys(networkDeployment.contracts).length} unique contracts`);
 
-  // Map contracts from deployment to config
+  // Map contracts from deployment to network config
   let foundCount = 0;
   const availableContracts = Object.keys(networkDeployment.contracts);
 
   for (const contractName of contractNames) {
-    const currentAddress = configData[contractName];
+    const currentAddress = networkConfig[contractName];
 
     // Skip if address is already set to a valid value (not empty, not placeholder)
     if (currentAddress && currentAddress !== "" && currentAddress !== "0x...") {
@@ -207,7 +207,7 @@ function discoverContractAddresses(configData, deployments, contractNames) {
     const match = findContractInDeployment(contractName, networkDeployment.contracts);
 
     if (match) {
-      configData[contractName] = match.address;
+      networkConfig[contractName] = match.address;
       foundCount++;
       const sourceFile = networkDeployment.contractSources[match.key];
       console.log(`   ✓ Discovered ${match.key} → ${contractName}: ${match.address}`);
@@ -222,8 +222,6 @@ function discoverContractAddresses(configData, deployments, contractNames) {
     console.log(`   No matching contracts found in deployment file`);
     console.log(`   Available contracts: ${availableContracts.join(", ")}`);
   }
-
-  return configData;
 }
 
 /**
@@ -264,31 +262,29 @@ async function fetchContractCreationBlock(chainId, address) {
 /**
  * Fetch deployment blocks for contracts with block set to 0
  */
-async function fetchDeploymentBlocks(configData, contractNames) {
+async function fetchDeploymentBlocks(networkConfig, contractNames) {
   for (const contractName of contractNames) {
     const blockKey = `${contractName}_BLOCK`;
-    const address = configData[contractName];
-    const currentBlock = configData[blockKey];
+    const address = networkConfig[contractName];
+    const currentBlock = networkConfig[blockKey];
 
     if (address && address !== "" && address !== "0x..." && (currentBlock === 0 || currentBlock === undefined)) {
       console.log(`⏳ Fetching creation block for ${contractName} (${address})...`);
 
-      const block = await fetchContractCreationBlock(configData.CHAIN_ID, address);
+      const block = await fetchContractCreationBlock(networkConfig.chainId, address);
 
       if (block !== null) {
-        configData[blockKey] = block;
+        networkConfig[blockKey] = block;
         console.log(`✓ ${contractName} deployed at block ${block}`);
       } else {
         console.log(`✗ Could not determine creation block for ${contractName}, using 0`);
-        configData[blockKey] = 0;
+        networkConfig[blockKey] = 0;
       }
 
       // Rate limit to avoid hitting API limits (5 requests per second for free tier)
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
   }
-
-  return configData;
 }
 
 async function main() {
@@ -301,28 +297,35 @@ async function main() {
     console.log(`📝 Parsed ${contractNames.length} contracts from template: ${contractNames.join(", ")}`);
 
     // Read the config JSON
-    let configData = JSON.parse(fs.readFileSync(configJsonPath, "utf-8"));
+    const configData = JSON.parse(fs.readFileSync(configJsonPath, "utf-8"));
 
-    // Discover contract addresses from deployment files
-    console.log("\n🔍 Discovering contract addresses from deployments...");
+    // Get all deployment data once
+    console.log("\n🔍 Reading deployment files...");
     const deployments = getLatestDeployments();
-    configData = discoverContractAddresses(configData, deployments, contractNames);
 
-    // Fetch deployment blocks if needed
-    console.log("\n📦 Checking deployment blocks...");
-    configData = await fetchDeploymentBlocks(configData, contractNames);
+    // Process each network
+    for (const network of configData.networks) {
+      console.log(`\n🌐 Processing ${network.name} (Chain ID: ${network.chainId})...`);
 
-    // Calculate network start block as minimum of all contract deployment blocks
-    const contractBlocks = contractNames
-      .map((name) => configData[`${name}_BLOCK`])
-      .filter((block) => block && block > 0);
+      // Discover contract addresses from deployment files
+      discoverContractAddressesForNetwork(network, deployments, contractNames);
 
-    if (contractBlocks.length > 0) {
-      configData.NETWORK_START_BLOCK = Math.min(...contractBlocks);
-      console.log(`✓ Network start block set to ${configData.NETWORK_START_BLOCK} (earliest contract)`);
-    } else if (!configData.NETWORK_START_BLOCK) {
-      configData.NETWORK_START_BLOCK = 0;
-      console.log(`⚠ Network start block defaulting to 0 (no contract blocks found)`);
+      // Fetch deployment blocks if needed
+      console.log(`\n📦 Fetching deployment blocks for ${network.name}...`);
+      await fetchDeploymentBlocks(network, contractNames);
+
+      // Calculate network start block as minimum of all contract deployment blocks
+      const contractBlocks = contractNames
+        .map((name) => network[`${name}_BLOCK`])
+        .filter((block) => block && block > 0);
+
+      if (contractBlocks.length > 0) {
+        network.startBlock = Math.min(...contractBlocks);
+        console.log(`✓ ${network.name} start block set to ${network.startBlock} (earliest contract)`);
+      } else if (!network.startBlock) {
+        network.startBlock = 0;
+        console.log(`⚠ ${network.name} start block defaulting to 0 (no contract blocks found)`);
+      }
     }
 
     // Compile the template

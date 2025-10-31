@@ -11,9 +11,11 @@ This project uses Handlebars templates to dynamically generate `config.yaml` fro
 
 ## Features
 
+- **Multi-Network Support**: Configure multiple networks (Sepolia, Mainnet, etc.) in a single config file
 - **Automatic Block Fetching**: Automatically fetches contract deployment blocks from Etherscan v2 API
 - **Per-Contract Start Blocks**: Each contract can have its own start_block for efficient indexing
 - **Multi-Chain Support**: Uses Etherscan v2 multichain API (single endpoint for all networks)
+- **Automatic Address Discovery**: Discovers contract addresses from olympus-v3 deployment files
 - **Fallback to Manual**: If API fails, blocks can be set manually in config.json
 
 ## Usage
@@ -72,28 +74,52 @@ node generate-config.js config.mainnet.json config.mainnet.yaml
 
 ## Configuration Variables
 
-The `config.json` file is **minimal** - just specify the network! The script automatically:
+The `config.json` file is **minimal** - just specify the networks! The script automatically:
 1. Parses contract names from `config.yaml.handlebars`
 2. Discovers addresses from `olympus-v3/deployments/` (merges all files)
 3. Fetches deployment blocks from Etherscan
 4. Calculates network start_block
 5. **Does NOT write back to config.json** - enrichment is done in memory
 
-**Minimal config.json:**
+**Minimal Single-Network Config (config.sepolia.json):**
 ```json
 {
-  "network": "sepolia",
-  "CHAIN_ID": 11155111
+  "networks": [
+    {
+      "name": "sepolia",
+      "chainId": 11155111
+    }
+  ]
+}
+```
+
+**Multi-Network Config (config.multi.json):**
+```json
+{
+  "networks": [
+    {
+      "name": "sepolia",
+      "chainId": 11155111
+    },
+    {
+      "name": "mainnet",
+      "chainId": 1
+    }
+  ]
 }
 ```
 
 **Optional: Override specific contracts** (if you want to use different addresses):
 ```json
 {
-  "network": "sepolia",
-  "CHAIN_ID": 11155111,
-  "ConvertibleDepositAuctioneer": "0xCustomAddress...",
-  "ConvertibleDepositAuctioneer_BLOCK": 9179736
+  "networks": [
+    {
+      "name": "sepolia",
+      "chainId": 11155111,
+      "ConvertibleDepositAuctioneer": "0xCustomAddress...",
+      "ConvertibleDepositAuctioneer_BLOCK": 9179736
+    }
+  ]
 }
 ```
 
@@ -159,15 +185,34 @@ This approach is **much more efficient** than using `start_block: 0`, as it:
 
 ## Multi-Network Setup
 
-To support multiple networks, create separate config files:
+You can configure multiple networks in two ways:
+
+**Option 1: Single config file with multiple networks (Recommended)**
+
+Create one config file with all networks:
 
 ```bash
-# Sepolia
-config.sepolia.json
+# config.multi.json
+{
+  "networks": [
+    { "name": "sepolia", "chainId": 11155111 },
+    { "name": "mainnet", "chainId": 1 }
+  ]
+}
+
+# Generate config for all networks at once
+node generate-config.js config.multi.json config.yaml
+```
+
+**Option 2: Separate config files per network**
+
+Create individual config files for each network:
+
+```bash
+# Sepolia only
 node generate-config.js config.sepolia.json config.sepolia.yaml
 
-# Mainnet
-config.mainnet.json
+# Mainnet only
 node generate-config.js config.mainnet.json config.mainnet.yaml
 ```
 
