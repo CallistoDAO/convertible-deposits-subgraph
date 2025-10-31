@@ -1,0 +1,3 @@
+[submodule "olympus-v3"]
+	path = olympus-v3
+	url = https://github.com/CallistoDAO/olympus-v3.git
